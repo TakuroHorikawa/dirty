@@ -361,4 +361,62 @@ function joinRoom(mode) {
     game.peer.on('open', (id) => {
         game.myId = id;
         document.getElementById('room-display').innerText = "部屋: " + roomId;
-        document.getElementById('lobby-setup').style.display =
+        document.getElementById('lobby-setup').style.display = 'none';
+        document.getElementById('lobby-wait').style.display = 'block';
+
+        if(mode === 'host') {
+            game.isHost = true;
+            game.init();
+            game.state.players[id] = MAJORS[0].id;
+            document.getElementById('start-btn').style.display = 'block';
+            updateLobby();
+        } else {
+            const conn = game.peer.connect(roomId);
+            setupConn(conn);
+        }
+    });
+    
+    // Hosting logic
+    if(mode === 'host') {
+        setTimeout(() => {
+            // Self-connect workaround for roomId
+            const hostPeer = new Peer(roomId);
+            hostPeer.on('open', () => {
+                hostPeer.on('connection', setupConn);
+            });
+        }, 500);
+    }
+}
+
+function setupConn(conn) {
+    game.conns[conn.peer] = conn;
+    conn.on('open', () => {
+        if(game.isHost) {
+            const currentPlayers = Object.keys(game.state.players).length;
+            if(currentPlayers < 5) game.state.players[conn.peer] = MAJORS[currentPlayers].id;
+            game.broadcast();
+            updateLobby();
+        }
+    });
+    conn.on('data', (data) => {
+        if(data.type === 'sync') {
+            game.state = data.state;
+            game.updateUI();
+            updateLobby();
+        }
+        if(data.type === 'action' && game.isHost) {
+            game.applyAction(data.actorId, data.actType, data.targetIdx);
+        }
+    });
+}
+
+function updateLobby() {
+    const list = document.getElementById('player-list');
+    list.innerHTML = "参加中:<br>";
+    Object.values(game.state.players).forEach(pId => {
+        list.innerHTML += `- ${MAJORS.find(m=>m.id===pId).name}<br>`;
+    });
+}
+</script>
+</body>
+</html>
