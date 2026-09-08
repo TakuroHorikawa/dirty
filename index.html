@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WORLD WAR: SUPREMACY</title>
+    <title>WORLD WAR SUPREMACY - Ultra Aggressive</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -26,7 +26,7 @@
         .lobby-box { background: var(--panel); padding: 30px; border-radius: 12px; border: 1px solid var(--border); width: 90%; max-width: 400px; text-align: center; }
 
         input { background: #000; border: 1px solid var(--border); color: #fff; padding: 10px; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; background: var(--accent); color: white; margin-bottom: 8px; }
+        button { width: 100%; padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; background: var(--accent); color: white; margin-bottom: 4px; font-size: 13px; }
         button:hover:not(:disabled) { filter: brightness(1.2); }
         button:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -88,8 +88,10 @@
             <div class="action-grid">
                 <button onclick="game.handleActionRequest('war')">戦争(総力戦)</button>
                 <button onclick="game.handleActionRequest('tax')" id="tax-btn">徴税</button>
-                <button onclick="game.handleActionRequest('plus')">軍拡(↑)</button>
-                <button onclick="game.handleActionRequest('minus')">軍縮(↓)</button>
+                <button onclick="game.handleActionRequest('plus')">軍拡(+N)</button>
+                <button onclick="game.handleActionRequest('minus')">軍縮(-N)</button>
+                <button onclick="game.handleActionRequest('plus_max')" style="background:#2ecc71">軍拡(最大)</button>
+                <button onclick="game.handleActionRequest('minus_max')" style="background:#e67e22">軍縮(最大)</button>
                 <button onclick="game.handleActionRequest('alliance')">同盟申請</button>
                 <button onclick="game.handleActionRequest('requestAid')">援助要請</button>
                 <button onclick="game.handleActionRequest('end')" style="grid-column: span 2; background:#333">ターンエンド</button>
@@ -119,11 +121,7 @@
         { id: 'cn', name: 'チュウゴク', short: 'チュ', color: '#000', power: 500, cash: 1500 },
         { id: 'in', name: 'インド', short: 'イン', color: '#000', power: 500, cash: 1500 }
     ];
-    const MIDDLE_COUNTRIES = [
-        "インド", "韓国", "イタリア", "オーストラリア", "ブラジル", 
-        "インドネシア", "トルコ", "サウジアラビア", "メキシコ", "南アフリカ", 
-        "スペイン", "ポーランド", "オランダ", "イラン", "アルゼンチン"
-    ];
+    const MIDDLE_COUNTRIES = ["インド", "韓国", "イタリア", "オーストラリア", "ブラジル", "インドネシア", "トルコ", "サウジアラビア", "メキシコ", "南アフリカ", "スペイン", "ポーランド", "オランダ", "イラン", "アルゼンチン"];
     const SMALL_NAMES = ["ルクセンブルク", "アイスランド", "エストニア", "ラトビア", "リトアニア", "スロバキア", "キプロス", "マルタ", "シンガポール", "ブルネイ", "ブータン", "モルティブ", "ラオス", "東ティモール", "フィジー", "サモア", "カタール", "バーレーン", "オマーン", "ボツワナ", "モーリシャス", "カーボベルデ", "セイシェル", "ジブチ", "ナミビア", "ウルグアイ", "コスタリカ", "ジャマイカ", "バルバドス", "バハマ"];
 
     class GameCore {
@@ -158,7 +156,7 @@
         start() {
             if (!this.isHost) return;
             this.state.isStarted = true;
-            this.addLog("世界大戦が開始されました。");
+            this.addLog("【開戦】世界大戦が開始されました。");
             this.broadcast();
         }
 
@@ -207,7 +205,7 @@
                         const enemyCash = isMajorTarget ? this.state.grid.find(c => c.id === targetOwnerId).cash : target.cash;
                         actor.cash += enemyCash;
                         if (isMajorTarget) {
-                            logMsg = `${actor.name}が${MAJORS.find(m=>m.id===targetOwnerId).name}を併合！全領土を支配下。`;
+                            logMsg = `${actor.name}が${MAJORS.find(m=>m.id===targetOwnerId).name}を滅亡させ、全領土を併合！`;
                             this.state.grid.forEach(c => { if(c.ownerId === targetOwnerId) c.ownerId = actorId; });
                         } else {
                             logMsg = `${actor.name}が${target.name}を制圧。`;
@@ -221,15 +219,25 @@
                     if (this.state.taxUsed[actorId] < 5) {
                         const gain = myCells.length * 20;
                         actor.cash += gain; this.state.taxUsed[actorId]++;
-                        logMsg = `${actor.name}が徴税(+${gain})`;
+                        logMsg = `${actor.name}が徴税を実施(+${gain})`;
                     } break;
 
                 case 'plus':
-                    if (actor.cash >= amount * 2) { actor.cash -= amount * 2; actor.power += amount; logMsg = `${actor.name}が軍拡大(+${amount})`; }
+                    if (actor.cash >= amount * 2) { actor.cash -= amount * 2; actor.power += amount; logMsg = `${actor.name}が軍拡を実施(+${amount})`; }
+                    break;
+
+                case 'plus_max':
+                    const maxP = Math.floor(actor.cash / 2);
+                    if (maxP > 0) { actor.cash -= maxP * 2; actor.power += maxP; logMsg = `${actor.name}が限界まで軍拡(+${maxP})`; }
                     break;
 
                 case 'minus':
-                    if (actor.power >= amount) { actor.power -= amount; actor.cash += amount * 2; logMsg = `${actor.name}が軍縮(+${amount * 2})`; }
+                    if (actor.power >= amount) { actor.power -= amount; actor.cash += amount * 2; logMsg = `${actor.name}が軍縮を実施(+${amount * 2})`; }
+                    break;
+
+                case 'minus_max':
+                    const curP = actor.power;
+                    if (curP > 0) { actor.power = 0; actor.cash += curP * 2; logMsg = `${actor.name}が全戦力を軍縮(+${curP * 2})`; }
                     break;
 
                 case 'alliance':
@@ -238,8 +246,8 @@
                     if (MAJORS.some(m => m.id === tid) && tid !== actorId) {
                         if(Math.random() > 0.4) {
                             this.state.alliances.push([actorId, tid]);
-                            logMsg = `${actor.name}が${MAJORS.find(m=>m.id===tid).name}と同盟締結。`;
-                        } else { logMsg = `${MAJORS.find(m=>m.id===tid).name}は同盟を拒絶。`; }
+                            logMsg = `${actor.name}と${MAJORS.find(m=>m.id===tid).name}が同盟。`;
+                        } else { logMsg = `${MAJORS.find(m=>m.id===tid).name}は同盟を拒否。`; }
                     } break;
 
                 case 'requestAid':
@@ -250,11 +258,11 @@
                         if (provider.cash >= 100) {
                             provider.cash -= 50; provider.power -= 20;
                             actor.cash += 50; actor.power += 20;
-                            logMsg = `${actor.name}が${provider.name}から援助を受けた。`;
-                        } else { logMsg = `${provider.name}に援助の余力なし。`; }
+                            logMsg = `${actor.name}が援助を受けた。`;
+                        } else { logMsg = `${provider.name}に余力なし。`; }
                     } break;
 
-                case 'end': logMsg = `${actor.name}は戦力を温存。`; break;
+                case 'end': logMsg = `${actor.name}は戦力を維持。`; break;
             }
 
             if (logMsg) this.addLog(logMsg);
@@ -274,61 +282,52 @@
         runAI(id) {
             const actor = this.state.grid.find(c => c.id === id);
             const myCells = this.state.grid.filter(c => c.ownerId === id);
-            const aliveMajors = MAJORS.filter(m => this.state.grid.some(c => c.ownerId === m.id));
 
-            // AIの思考ルーチン（必ずどれか一つ実行する）
+            // AIの思考ルーチン（超好戦的）
             
-            // 1. 徴税（回数があり、資金が少ない場合）
-            if (this.state.taxUsed[id] < 5 && actor.cash < 40) {
-                return this.applyAction(id, 'tax', null, 0);
-            }
+            // 優先1: 侵略（勝てる隣接国を全てチェックし、最も弱いところへ）
+            let bestTarget = null;
+            let minPower = Infinity;
 
-            // 2. 軍拡（十分な資金がある場合）
-            if (actor.cash >= 60) {
-                return this.applyAction(id, 'plus', null, Math.floor(actor.cash / 2.5));
-            }
-
-            // 3. 侵攻ターゲットの探索
-            let neighbors = [];
             myCells.forEach(mc => {
                 const x = mc.pos % 9, y = Math.floor(mc.pos / 9);
                 [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx, dy]) => {
                     const nx = x+dx, ny = y+dy;
                     if(nx>=0 && nx<9 && ny>=0 && ny<6) {
                         const t = this.state.grid[ny*9+nx];
-                        if(t.ownerId !== id) neighbors.push({idx: ny*9+nx, cell: t});
+                        if(t.ownerId !== id) {
+                            const isM = MAJORS.some(m => m.id === t.ownerId);
+                            const p = isM ? this.state.grid.find(c => c.id === t.ownerId).power : t.power;
+                            if (actor.power > p && p < minPower) {
+                                minPower = p;
+                                bestTarget = ny*9+nx;
+                            }
+                        }
                     }
                 });
             });
 
-            // 弱い隣接国がいれば即座に攻撃
-            for (let n of neighbors) {
-                const isM = MAJORS.some(m => m.id === n.cell.ownerId);
-                const p = isM ? this.state.grid.find(c => c.id === n.cell.ownerId).power : n.cell.power;
-                if (actor.power > p * 1.1) return this.applyAction(id, 'war', n.idx, 0);
+            if (bestTarget !== null) {
+                return this.applyAction(id, 'war', bestTarget, 0);
             }
 
-            // 4. 外交（自分より強い国が隣にいる場合、他国に同盟申請）
-            const threat = neighbors.find(n => {
-                const isM = MAJORS.some(m => m.id === n.cell.ownerId);
-                return isM && this.state.grid.find(c => c.id === n.cell.ownerId).power > actor.power;
-            });
-            if (threat) {
-                const partner = aliveMajors.find(m => m.id !== id && m.id !== threat.cell.ownerId && !this.isAlly(id, m.id));
-                if (partner) return this.applyAction(id, 'alliance', this.state.grid.find(c => c.ownerId === partner.id).pos, 0);
-                
-                // すでに同盟国がいれば援助を要請
-                const ally = aliveMajors.find(m => this.isAlly(id, m.id));
-                if (ally && actor.power < 50) return this.applyAction(id, 'requestAid', this.state.grid.find(c => c.ownerId === ally.id).pos, 0);
+            // 優先2: 軍拡（20以上あれば最大変換）
+            if (actor.cash >= 20) {
+                return this.applyAction(id, 'plus_max', null, 0);
             }
 
-            // 5. 最後に何もできなかったら「ターンエンド」
+            // 優先3: 徴税（回数があれば）
+            if (this.state.taxUsed[id] < 5) {
+                return this.applyAction(id, 'tax', null, 0);
+            }
+
+            // 優先4: ターンエンド
             this.applyAction(id, 'end', null, 0);
         }
 
         checkVictory() {
             const alive = MAJORS.filter(m => this.state.grid.some(c => c.ownerId === m.id));
-            if (alive.length === 1) { this.state.winner = alive[0].name; this.addLog(`覇者：${this.state.winner}！`); }
+            if (alive.length === 1) { this.state.winner = alive[0].name; this.addLog(`覇者：${this.state.winner}！世界を統一した。`); }
         }
 
         canIMove() { return this.state.isStarted && !this.state.winner && this.state.players[this.myPeerId] === MAJORS[this.state.turnIdx].id; }
@@ -360,7 +359,7 @@
             });
             document.getElementById('turn-display').textContent = MAJORS[this.state.turnIdx].name + "の番";
             const myMid = this.state.players[this.myPeerId];
-            document.getElementById('my-info').textContent = `担当：${MAJORS.find(m => m.id === myMid)?.name || '観戦'}`;
+            document.getElementById('my-info').textContent = `担当：${MAJORS.find(m => m.id === myMid)?.name || '観戦者'}`;
             document.getElementById('actions').style.display = this.canIMove() ? 'block' : 'none';
             if (this.canIMove()) document.getElementById('tax-btn').textContent = `徴税(${5 - this.state.taxUsed[myMid]})`;
             if (this.state.winner) document.getElementById('turn-display').textContent = "勝者：" + this.state.winner;
@@ -390,6 +389,7 @@
             });
             conn.on('data', (d) => { if (d.type === 'action') game.applyAction(d.actorId, d.actType, d.targetIdx, d.amount); });
         });
+        game.peer.on('error', (err) => { if (err.type === 'unavailable-id') alert("部屋名が重複しています。"); });
     }
 
     function joinRoom() {
@@ -410,7 +410,7 @@
         list.innerHTML = '<strong>参戦国:</strong>';
         Object.entries(game.state.players).forEach(([pid, mid]) => {
             const d = document.createElement('div');
-            d.textContent = `・${MAJORS.find(m => m.id === mid).name} (${pid === game.myPeerId ? 'あなた' : 'PL'})`;
+            d.textContent = `・${MAJORS.find(m => m.id === mid).name} (${pid === game.myPeerId ? 'あなた' : 'プレイヤー'})`;
             list.appendChild(d);
         });
     }
