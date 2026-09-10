@@ -7,16 +7,14 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
-            /* 配色設定：ユーザーお気に入り */
+            /* デザイン設定：スレートグレー背景 / 鮮やかな海 / 主要国固有色 */
             --bg-main: #374151;
             --panel-bg: #1f2937;
             --border-color: #4b5563;
             --text-main: #f8fafc;
-            /* 主要国固有カラー */
             --uk: #006400; --fr: #b8860b; --de: #00008b; --ni: #8b0000; --ca: #4b0082;
             --super-bg: #000000;
             --mid-bg: #334155; --small-bg: #64748b;
-            /* UIアクセント */
             --danger: #ef4444; --gold: #f1c40f; --silver: #94a3b8; --bronze: #cd7f32; --success: #22c55e; --accent: #6366f1;
             --map-sea: #1e293b; 
             --btn-action: #4b5563;
@@ -30,25 +28,22 @@
         
         @media (min-width: 1000px) {
             body { flex-direction: row; }
-            #sidebar { width: 360px; height: 100vh; position: sticky; top: 0; border-right: 1px solid var(--border-color); background: var(--panel-bg); display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; }
+            #sidebar { width: 360px; height: 100vh; position: sticky; top: 0; border-right: 1px solid var(--border-color); background: var(--panel-bg); display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; overflow-y: auto; }
             #main { flex: 1; padding: 20px; background: var(--bg-main); display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
         }
 
         @media (max-width: 999px) {
-            #sidebar { width: 100%; border-bottom: 1px solid var(--border-color); padding: 10px; background: var(--panel-bg); box-sizing: border-box; }
+            #sidebar { width: 100%; border-bottom: 1px solid var(--border-color); padding: 10px; background: var(--panel-bg); box-sizing: border-box; overflow-y: auto; max-height: 50vh; }
             #main { width: 100%; padding: 10px; box-sizing: border-box; overflow-x: auto; }
         }
 
-        /* アナウンス演出オーバーレイ */
+        /* 告知オーバーレイ */
         #announce-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 3000;
             display: none; align-items: center; justify-content: center;
             pointer-events: none; transition: opacity 0.5s;
         }
-        #announce-text {
-            font-size: 5rem; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--accent);
-            text-align: center; letter-spacing: 10px;
-        }
+        #announce-text { font-size: 4rem; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--accent); text-align: center; letter-spacing: 8px; }
 
         /* ロビー・モーダル */
         #lobby, #result-overlay, #generic-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; }
@@ -56,16 +51,17 @@
 
         input, select { background: #0f172a; border: 1px solid var(--border-color); color: #fff; padding: 12px; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
         
+        /* ボタン */
         .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .action-grid button { 
             width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; 
-            transition: all 0.2s; background: var(--btn-action); color: white; font-size: 13px; border-bottom: 3px solid rgba(0,0,0,0.1);
+            transition: 0.2s; background: var(--btn-action); color: white; font-size: 13px; border-bottom: 3px solid rgba(0,0,0,0.1);
         }
         .action-grid button:hover:not(:disabled) { background: #64748b; transform: translateY(-1px); }
         .action-grid button.break-btn { background: var(--danger); border-bottom-color: #991b1b; }
         button.primary-btn { background: var(--accent); color: white; padding: 14px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size: 1.1rem; }
 
-        /* マップ (12x8) */
+        /* マップグリッド */
         #grid-container { background: var(--map-sea); padding: 10px; border-radius: 12px; border: 4px solid #1e2937; width: 100%; max-width: 1100px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         #grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; width: 100%; aspect-ratio: 12 / 8; }
         .cell { 
@@ -77,7 +73,7 @@
         .cell.selected { border: 2px solid #fff; box-shadow: 0 0 15px var(--accent); z-index: 10; }
         .ally-mark { position: absolute; top: 1px; right: 1px; font-size: 10px; }
 
-        /* 国選択パネル */
+        /* 国選択 */
         #selection-panel { width: 100%; background: var(--panel-bg); border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; margin-top: 20px; text-align: center; }
         .country-btn-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
         .country-choice { padding: 12px 18px; border-radius: 8px; border: 3px solid transparent; cursor: pointer; font-weight: bold; font-size: 14px; min-width: 100px; color: white; transition: 0.2s; }
@@ -85,25 +81,26 @@
         .country-choice.active { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 20px rgba(255,255,255,0.4); }
 
         /* ログ・チャット */
-        .log-chat-container { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 10px; margin-top: 5px; }
+        .log-chat-container { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .scroll-box { overflow-y: auto; background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 12px; }
-        #game-log { flex: 1.2; min-height: 180px; border-left: 5px solid var(--accent); }
-        #chat-box { flex: 1; min-height: 140px; color: #a5b4fc; border-left: 5px solid var(--success); }
+        #game-log { height: 160px; border-left: 5px solid var(--accent); }
+        #chat-box { height: 140px; color: #a5b4fc; border-left: 5px solid var(--success); }
         .chat-input-row { display: flex; gap: 6px; }
         
         .info-card { background: #1f2937; padding: 15px; border-radius: 10px; margin-bottom: 12px; border: 1px solid var(--border-color); }
         .score-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid #374151; }
         .current-turn-glow { animation: glow 1.5s infinite alternate; }
         @keyframes glow { from { box-shadow: 0 0 5px #fff; } to { box-shadow: 0 0 20px var(--accent); } }
+        .rank-item { padding: 15px; margin: 10px 0; border-radius: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; color: #000; }
     </style>
 </head>
 <body>
 
-    <!-- 告知オーバーレイ -->
+    <!-- 演出 -->
     <div id="announce-overlay"><div id="announce-text">GAME START</div></div>
 
-    <!-- 1. ロビー -->
-    <div id="lobby" style="display: flex;">
+    <!-- ロビー -->
+    <div id="lobby">
         <div class="box">
             <h1 style="letter-spacing: 5px; color: var(--accent); font-size: 2.5rem; margin-bottom: 10px;">World War III</h1>
             <div id="lobby-setup">
@@ -124,7 +121,7 @@
         </div>
     </div>
 
-    <!-- 2. リザルト -->
+    <!-- リザルト -->
     <div id="result-overlay" style="display:none">
         <div class="box">
             <h1 style="color:var(--gold); margin-top:0; font-size: 2rem;">最終結果発表</h1>
@@ -133,7 +130,7 @@
         </div>
     </div>
 
-    <!-- 3. モーダル -->
+    <!-- 承認モーダル -->
     <div id="generic-modal" style="display:none">
         <div class="box">
             <h3 id="modal-text">-</h3>
@@ -145,7 +142,7 @@
         </div>
     </div>
 
-    <!-- 4. サイドバー -->
+    <!-- サイドバー -->
     <div id="sidebar" style="display: none;">
         <div class="info-card">
             <h2 style="font-size: 1.2rem; margin: 0 0 10px 0; color: var(--accent); border-bottom: 2px solid var(--accent); display: inline-block;">World War III</h2>
@@ -188,15 +185,15 @@
         </div>
     </div>
 
-    <!-- 5. メインエリア -->
+    <!-- メイン -->
     <div id="main" style="display: none;">
         <div id="grid-container">
             <div id="grid"></div>
         </div>
         <div id="selection-panel" style="display:none">
-            <h3 style="margin-bottom: 5px;">担当する主要国を選んでください</h3>
+            <h3 id="selection-msg" style="margin-bottom: 5px;">担当する主要国を選んでください</h3>
             <div id="country-btn-list" class="country-btn-list"></div>
-            <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">※人間プレイヤーが全員選び終わると自動的に開戦します</p>
+            <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">※全員選び終わると自動的に開戦します</p>
         </div>
     </div>
 
@@ -242,8 +239,7 @@
 
         resetData() {
             this.state = { 
-                phase: 'lobby',
-                grid: [], turnIdx: 0, players: {}, taxUsed: {}, alliances: [], isStarted: false, winner: null, 
+                phase: 'lobby', grid: [], turnIdx: 0, players: {}, taxUsed: {}, alliances: [], isStarted: false, winner: null, 
                 scores: { uk: 0, fr: 0, de: 0, ni: 0, ca: 0 }, 
                 maxLands: { uk: 0, fr: 0, de: 0, ni: 0, ca: 0 },
                 warCooldown: { uk: 0, fr: 0, de: 0, ni: 0, ca: 0 },
@@ -252,12 +248,12 @@
         }
 
         updateUIVisibility() {
-            const phase = this.state.phase;
-            if (document.getElementById('lobby')) document.getElementById('lobby').style.display = (phase === 'lobby') ? 'flex' : 'none';
-            if (document.getElementById('main')) document.getElementById('main').style.display = (phase === 'lobby') ? 'none' : 'flex';
-            if (document.getElementById('sidebar')) document.getElementById('sidebar').style.display = (phase === 'lobby') ? 'none' : 'flex';
-            if (document.getElementById('selection-panel')) document.getElementById('selection-panel').style.display = (phase === 'country_select') ? 'block' : 'none';
-            if (document.getElementById('actions')) document.getElementById('actions').style.display = (phase === 'playing') ? 'block' : 'none';
+            const p = this.state.phase;
+            if (document.getElementById('lobby')) document.getElementById('lobby').style.display = (p === 'lobby') ? 'flex' : 'none';
+            if (document.getElementById('main')) document.getElementById('main').style.display = (p === 'lobby') ? 'none' : 'flex';
+            if (document.getElementById('sidebar')) document.getElementById('sidebar').style.display = (p === 'lobby') ? 'none' : 'flex';
+            if (document.getElementById('selection-panel')) document.getElementById('selection-panel').style.display = (p === 'country_select') ? 'block' : 'none';
+            if (document.getElementById('actions')) document.getElementById('actions').style.display = (p === 'playing') ? 'block' : 'none';
         }
 
         showAnnounce(msg) {
@@ -270,23 +266,14 @@
 
         setLobbyMode(mode) {
             this.lobbyMode = mode;
-            if (mode === 'solo') {
-                this.isHost = true; this.initMap(); this.state.phase = 'country_select';
-            } else {
-                document.getElementById('multi-setup').style.display = 'block';
-            }
+            if (mode === 'solo') { this.isHost = true; this.initMap(); this.state.phase = 'country_select'; }
+            else { document.getElementById('multi-setup').style.display = 'block'; }
             this.updateUIVisibility(); this.updateUI();
         }
 
-        initAndShowMap() {
-            if (this.isHost) {
-                this.initMap(); this.state.phase = 'country_select'; this.broadcast();
-            }
-        }
+        initAndShowMap() { if (this.isHost) { this.initMap(); this.state.phase = 'country_select'; this.broadcast(); } }
 
-        isHumanPlayer(majorId) {
-            return Object.keys(this.state.players).some(key => !key.startsWith('ai_') && this.state.players[key] === majorId);
-        }
+        isHumanPlayer(majorId) { return Object.keys(this.state.players).some(key => !key.startsWith('ai_') && this.state.players[key] === majorId); }
 
         selectCountry(majorId) {
             const pId = this.myPeerId || 'host';
@@ -311,8 +298,8 @@
             const chosenCount = Object.keys(this.state.players).filter(k => !k.startsWith('ai_')).length;
             if (chosenCount >= humanCount) {
                 MAJORS.forEach(m => { if (!Object.values(this.state.players).includes(m.id)) this.state.players['ai_' + m.id] = m.id; });
-                this.state.phase = 'playing'; this.state.isStarted = true; this.state.countrySelectionDone = true; this.state.turnIdx = 0;
-                this.addLog("全プレイヤー準備完了。対戦開始！");
+                this.state.phase = 'playing'; this.state.isStarted = true; this.state.countrySelectionDone = true;
+                this.state.turnIdx = 0; this.addLog("全プレイヤー準備完了。対戦開始！");
                 setTimeout(() => this.showAnnounce("GAME START"), 500);
                 this.broadcast(); this.checkAIStart();
             }
@@ -321,10 +308,7 @@
         checkAIStart() {
             if (!this.isHost) return;
             const firstId = MAJORS[0].id;
-            if (!this.isHumanPlayer(firstId)) {
-                console.log('初手AIを実行');
-                setTimeout(() => this.runAI(firstId), 2000);
-            }
+            if (!this.isHumanPlayer(firstId)) { setTimeout(() => this.runAI(firstId), 2000); }
         }
 
         initMap() {
@@ -333,10 +317,7 @@
             shuffle(all);
             this.state.grid = Array(96).fill(null).map((_, i) => {
                 const x = i % 12, y = Math.floor(i / 12);
-                const isMainland = (x <= 7);
-                const isIsland = (x >= 9 && x <= 11 && y <= 2);
-                const isPeninsula = (x >= 8 && x <= 9 && y >= 4);
-                if (isMainland || isIsland || isPeninsula) {
+                if ((x <= 7) || (x >= 9 && x <= 11 && y <= 2) || (x >= 8 && x <= 9 && y >= 4)) {
                     const c = all.pop(); return { ...c, ownerId: c.id, pos: i, power: c.power, cash: c.cash };
                 }
                 return { isSea: true, pos: i };
@@ -348,8 +329,7 @@
         nextRound() {
             if (!this.isHost) return;
             this.state.round++; this.initMap(); this.state.phase = 'playing'; this.state.isStarted = true;
-            this.addLog(`第 ${this.state.round} ラウンド開始。`);
-            this.broadcast(); this.showAnnounce(`ROUND ${this.state.round}`); this.checkAIStart();
+            this.addLog(`第 ${this.state.round} ラウンド開始。`); this.broadcast(); this.showAnnounce(`ROUND ${this.state.round}`); this.checkAIStart();
         }
 
         broadcast() {
@@ -370,8 +350,9 @@
             const txt = input.value ? input.value.trim() : "";
             if (!txt) return;
             const sender = MAJORS.find(m => m.id === this.myCountryId)?.name || '観戦者';
-            if (this.isHost) { this.addChat(`${sender}: ${txt}`); this.broadcast(); }
-            else { if(this.conns[this.hostId]) this.conns[this.hostId].send({ type: 'chat', msg: `${sender}: ${txt}` }); }
+            const fullMsg = `${sender}: ${txt}`;
+            if (this.isHost) { this.addChat(fullMsg); this.broadcast(); }
+            else { if(this.conns[this.hostId]) this.conns[this.hostId].send({ type: 'chat', msg: fullMsg }); }
             input.value = '';
         }
 
@@ -404,9 +385,9 @@
                         const enemyBase = isMajor ? this.getMajorBaseCell(targetCell.ownerId) : targetCell;
                         actorBase.cash += enemyBase.cash;
                         if (isMajor) {
-                            logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を制圧！`;
                             const tID = targetCell.ownerId; this.state.grid.forEach(c => { if(c && !c.isSea && c.ownerId === tID) c.ownerId = actorId; });
                             enemyBase.power = 0; enemyBase.cash = 0;
+                            logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を制圧！`;
                         } else { logMsg = `${actorBase.name}が${targetCell.name}を制圧。`; targetCell.ownerId = actorId; }
                         if (!this.isHumanPlayer(actorId)) this.state.warCooldown[actorId] = 3;
                         this.checkRoundVictory();
@@ -419,7 +400,7 @@
                     } break;
                 case 'plus_max':
                     const pMax = Math.floor(actorBase.cash / 2);
-                    if (pMax > 0) { actorBase.cash -= pMax * 2; actorBase.power += pMax; logMsg = `${actorBase.name}が全額軍拡。`; }
+                    if (pMax > 0) { actorBase.cash -= pMax * 2; actorBase.power += pMax; logMsg = `${actorBase.name}が限界軍拡。`; }
                     break;
                 case 'alliance':
                     if (targetIdx === null) break;
@@ -437,20 +418,23 @@
                     const b_tid = this.state.grid[targetIdx].ownerId;
                     if (this.isAlly(actorId, b_tid)) { this.state.alliances = this.state.alliances.filter(p => !(p.includes(actorId) && p.includes(b_tid))); logMsg = `⚠️ ${actorBase.name}が同盟破棄。`; }
                     break;
-                case 'missile':
+                case 'missile': // ミサイル攻撃・占領
                     if (targetIdx === null) break;
                     const mTarget = this.state.grid[targetIdx];
                     if (!mTarget || mTarget.isSea || mTarget.ownerId === actorId || this.isAlly(actorId, mTarget.ownerId)) break;
                     if (actorBase.cash >= 100) {
                         actorBase.cash -= 100;
-                        const isM = MAJORS.some(m => m.id === mTarget.ownerId);
-                        const isS = SUPERS.some(s => s.id === mTarget.ownerId);
+                        const tOwner = mTarget.ownerId;
+                        const isM = MAJORS.some(m => m.id === tOwner);
+                        const isS = SUPERS.some(s => s.id === tOwner);
                         if (isM || isS) {
-                            const targetBase = this.getMajorBaseCell(mTarget.ownerId);
-                            targetBase.power = Math.floor(targetBase.power / 2);
-                            logMsg = `🚀 ${actorBase.name}のミサイルが${MAJORS.find(m=>m.id===mTarget.ownerId)?.name || SUPERS.find(s=>s.id===mTarget.ownerId)?.name}に着弾！`;
-                        } else { mTarget.power = Math.floor(mTarget.power / 2); logMsg = `🚀 ${actorBase.name}のミサイルが${mTarget.name}に命中！`; }
-                    } else { logMsg = "ミサイル費用が足りません。"; }
+                            const tBase = this.getMajorBaseCell(tOwner) || mTarget;
+                            tBase.power = Math.floor(tBase.power / 2);
+                        } else { mTarget.power = Math.floor(mTarget.power / 2); }
+                        mTarget.ownerId = actorId;
+                        logMsg = `🚀 ${actorBase.name}が${mTarget.name}へミサイル攻撃！戦力を削り、領土を奪取！`;
+                        this.checkRoundVictory();
+                    } else { logMsg = "ミサイル費用(100)が足りません。"; }
                     break;
                 case 'end': logMsg = `${actorBase.name}はターン終了。`; break;
             }
@@ -458,15 +442,16 @@
             this.nextTurn();
         }
 
+        // 修正事項：isAdjの完全復旧
         isAdj(myPosList, targetIdx) {
             const tx = targetIdx % 12, ty = Math.floor(targetIdx / 12);
             return myPosList.some(p => {
                 const mx = p % 12, my = Math.floor(p / 12);
                 if (Math.abs(mx - tx) + Math.abs(my - ty) === 1) return true;
-                if (mx === 7 && tx === 9 && my === ty && my <= 2) return true;
-                if (mx === 9 && tx === 7 && my === ty && my <= 2) return true;
-                if (mx === 7 && tx === 8 && my === ty && my >= 4) return true;
-                if (mx === 8 && tx === 7 && my === ty && my >= 4) return true;
+                if (mx === 7 && my <= 2 && tx === 9 && ty <= 2) return true;
+                if (mx === 9 && my <= 2 && tx === 7 && ty <= 2) return true;
+                if (mx === 7 && my >= 4 && tx === 8 && ty >= 4) return true;
+                if (mx === 8 && my >= 4 && tx === 7 && ty >= 4) return true;
                 return false;
             });
         }
@@ -498,7 +483,6 @@
             if (!this.isHumanPlayer(nextId)) setTimeout(() => this.runAI(nextId), 1200);
         }
 
-        // 修正：AI索敵
         runAI(id) {
             try {
                 if (!this.isHost) return;
@@ -509,41 +493,28 @@
 
                 const actorBase = this.getMajorBaseCell(id);
                 if (!actorBase) { this.nextTurn(); return; }
+                const myPosList = this.state.grid.filter(c => c && !c.isSea && c.ownerId === id).map(c => c.pos);
 
-                const myCells = this.state.grid.filter(c => c && !c.isSea && c.ownerId === id);
-
-                if (this.state.warCooldown[id] > 0) {
-                    this.state.warCooldown[id]--;
-                } else {
+                if (this.state.warCooldown[id] > 0) { this.state.warCooldown[id]--; } 
+                else {
                     let bestT = null; let minP = Infinity;
                     this.state.grid.forEach((t, tidx) => {
                         if (t && !t.isSea && t.ownerId !== id && !this.isAlly(id, t.ownerId)) {
-                            if (this.isAdj(myCells.map(c => c.pos), tidx)) {
+                            if (this.isAdj(myPosList, tidx)) {
                                 const isM = MAJORS.some(m => m.id === t.ownerId);
                                 const isS = SUPERS.some(s => s.id === t.ownerId);
                                 let p = t.power;
-                                if (isM) {
-                                    const base = this.getMajorBaseCell(t.ownerId);
-                                    if(base) p = base.power;
-                                } else if (isS) {
-                                    const sup = SUPERS.find(s=>s.id === t.ownerId);
-                                    if(sup) p = sup.power;
-                                }
-                                if (actorBase.power > p && p < minP) {
-                                    minP = p; bestT = tidx;
-                                }
+                                if (isM) { const base = this.getMajorBaseCell(t.ownerId); if(base) p = base.power; }
+                                else if (isS) { const sup = SUPERS.find(s=>s.id === t.ownerId); if(sup) p = sup.power; }
+                                if (actorBase.power > p && p < minP) { minP = p; bestT = tidx; }
                             }
                         }
                     });
                     if (bestT !== null) return this.applyAction(id, 'war', bestT, 0);
                 }
-
                 if (actorBase.cash >= 20) return this.applyAction(id, 'plus_max', null, 0);
                 this.applyAction(id, 'end', null, 0);
-            } catch (err) {
-                console.error("AI思考エラー:", err);
-                this.applyAction(id, 'end', null, 0);
-            }
+            } catch (e) { console.error("AI Error:", e); this.applyAction(id, 'end', null, 0); }
         }
 
         checkRoundVictory() {
@@ -580,9 +551,9 @@
         }
 
         canIMove() {
-            const myAssignedId = this.state.players[this.myPeerId || 'host'];
-            const currentTurnId = MAJORS[this.state.turnIdx].id;
-            return this.state.phase === 'playing' && !this.state.winner && myAssignedId === currentTurnId;
+            const myId = this.state.players[this.myPeerId || 'host'];
+            const curId = MAJORS[this.state.turnIdx].id;
+            return this.state.phase === 'playing' && !this.state.winner && myId === curId;
         }
 
         isAlly(id1, id2) { return this.state.alliances.some(pair => (pair.includes(id1) && pair.includes(id2))); }
@@ -616,37 +587,45 @@
             if (this.selectedIdx !== null) {
                 const c = this.state.grid[this.selectedIdx]; 
                 if (c && !c.isSea) {
-                    const stats = MAJORS.some(m => m.id === c.ownerId) ? this.getMajorBaseCell(c.ownerId) : (SUPERS.some(s=>s.id===c.ownerId) ? SUPERS.find(s=>s.id===c.ownerId) : c);
+                    const st = MAJORS.some(m => m.id === c.ownerId) ? this.getMajorBaseCell(c.ownerId) : (SUPERS.some(s=>s.id===c.ownerId) ? SUPERS.find(s=>s.id===c.ownerId) : c);
                     const ownerName = MAJORS.find(m => m.id === c.ownerId)?.name || (SUPERS.some(s=>s.id===c.ownerId) ? SUPERS.find(s=>s.id===c.ownerId).name : "NPC");
                     document.getElementById('det-name').textContent = (c.id !== c.ownerId) ? `${ownerName}領 ${c.name}` : c.name;
                     document.getElementById('det-owner').textContent = ownerName;
-                    document.getElementById('det-power').textContent = stats.power; document.getElementById('det-cash').textContent = stats.cash;
+                    document.getElementById('det-power').textContent = st.power; document.getElementById('det-cash').textContent = st.cash;
                 }
             }
 
             document.getElementById('game-log').innerHTML = this.state.logs.slice().reverse().map(l => `<div>> ${l}</div>`).join('');
-            document.getElementById('chat-box').innerHTML = this.state.chatLogs.slice().map(l => `<div>${l}</div>`).join('');
+            const cb = document.getElementById('chat-box');
+            cb.innerHTML = this.state.chatLogs.slice().map(l => `<div>${l}</div>`).join('');
+            cb.scrollTop = cb.scrollHeight;
+
             const sb = document.getElementById('score-board'); if(sb) sb.innerHTML = '';
             MAJORS.forEach(m => { sb.innerHTML += `<div class="score-row"><span>${m.name}</span> <span>${this.state.scores[m.id]}勝 (${this.state.maxLands[m.id]}領)</span></div>`; });
             
             const display = document.getElementById('turn-display');
-            if (this.state.winner) display.textContent = `勝利者：${this.state.winner}`;
+            if (this.state.winner) display.textContent = `勝者：${this.state.winner}`;
             else if (this.state.phase === 'playing') display.textContent = `${MAJORS[this.state.turnIdx].name}の番`;
             else display.textContent = "国を選択中...";
             
             const myMid = this.state.players[this.myPeerId || 'host'];
             document.getElementById('my-info').textContent = `担当：${MAJORS.find(m => m.id === myMid)?.name || '未選択'}`;
             if (this.canIMove()) document.getElementById('tax-btn').textContent = `徴税(${5 - this.state.taxUsed[myMid]})`;
-            const roundActions = document.getElementById('host-round-actions');
-            if (roundActions) roundActions.style.display = (this.state.winner && this.isHost) ? 'block' : 'none';
+            const ra = document.getElementById('host-round-actions');
+            if (ra) ra.style.display = (this.state.winner && this.isHost) ? 'block' : 'none';
         }
     }
 
     const game = new GameCore();
     window.selectCountry = (id) => game.selectCountry(id);
 
+    window.onload = () => {
+        game.state.phase = 'lobby'; game.updateUIVisibility();
+        document.getElementById('chat-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') game.sendChat(); });
+    };
+
     function hostRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
+        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("名前入力");
         game.lobbyMode = 'host'; game.isHost = true; game.peer = new Peer(rId, peerConfig);
         game.peer.on('open', id => {
             game.myPeerId = id; document.getElementById('room-display').textContent = "部屋：" + id;
@@ -665,7 +644,7 @@
                 const mid = game.state.players[conn.peer];
                 if (mid) {
                     delete game.state.players[conn.peer]; game.state.players['ai_' + mid] = mid;
-                    game.addLog(`⚠️ ${MAJORS.find(m=>m.id===mid).name} の通信切断。AIが指揮を引き継ぎます。`);
+                    game.addLog(`⚠️ ${MAJORS.find(m=>m.id===mid).name} 切断。AIが継承。`);
                     game.broadcast(); if (MAJORS[game.state.turnIdx].id === mid) game.checkAIStart();
                 }
                 delete game.conns[conn.peer];
@@ -674,25 +653,26 @@
     }
 
     function joinRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
+        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("名前入力");
         game.lobbyMode = 'guest'; game.isHost = false; game.hostId = rId; game.peer = new Peer(peerConfig);
         game.peer.on('open', id => {
             game.myPeerId = id; const conn = game.peer.connect(rId); game.conns[rId] = conn;
-            conn.on('open', () => { document.getElementById('wait-msg').textContent = "接続成功！ホストの開始を待っています..."; document.getElementById('wait-msg').style.color = "var(--success)"; });
+            conn.on('open', () => {
+                document.getElementById('wait-msg').textContent = "接続成功！ホストの開始待ち...";
+                document.getElementById('wait-msg').style.color = "var(--success)";
+            });
             conn.on('data', d => {
                 if (d.type === 'sync') { 
-                    const oldPhase = game.state.phase; const oldRound = game.state.round;
+                    const op = game.state.phase; const or = game.state.round;
                     game.state = d.state; game.updateUI();
-                    if (oldPhase !== 'playing' && game.state.phase === 'playing') game.showAnnounce("GAME START");
-                    if (oldPhase === 'playing' && game.state.round > oldRound) game.showAnnounce(`ROUND ${game.state.round}`);
+                    if (op !== 'playing' && game.state.phase === 'playing') game.showAnnounce("GAME START");
+                    if (op === 'playing' && game.state.round > or) game.showAnnounce(`ROUND ${game.state.round}`);
                 }
                 if (d.type === 'modal_request') game.showModal(d.modalType, d.fromId);
             });
             document.getElementById('lobby-setup').style.display = 'none'; document.getElementById('lobby-wait').style.display = 'block';
         });
     }
-
-    window.onload = () => { game.state.phase = 'lobby'; game.updateUIVisibility(); };
 </script>
 </body>
 </html>
