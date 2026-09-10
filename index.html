@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
-            /* 配色設定 */
+            /* 全体背景：スレートグレー */
             --bg-main: #374151;
             --panel-bg: #1f2937;
             --border-color: #4b5563;
@@ -16,7 +16,7 @@
             --uk: #006400; --fr: #b8860b; --de: #00008b; --ni: #8b0000; --ca: #4b0082;
             --super-bg: #000000;
             --mid-bg: #334155; --small-bg: #64748b;
-            /* アクセント */
+            /* UIアクセント */
             --danger: #ef4444; --gold: #f1c40f; --silver: #94a3b8; --bronze: #cd7f32; --success: #22c55e; --accent: #6366f1;
             --map-sea: #1e293b; 
             --btn-action: #4b5563;
@@ -45,6 +45,7 @@
 
         input, select { background: #0f172a; border: 1px solid var(--border-color); color: #fff; padding: 12px; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
         
+        /* ボタン */
         .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .action-grid button { 
             width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; 
@@ -90,8 +91,8 @@
 </head>
 <body>
 
-    <!-- ロビー画面 -->
-    <div id="lobby">
+    <!-- 1. ロビー画面 -->
+    <div id="lobby" style="display: flex;">
         <div class="box">
             <h1 style="letter-spacing: 5px; color: var(--accent); font-size: 2.5rem; margin-bottom: 10px;">World War III</h1>
             <div id="lobby-setup">
@@ -100,7 +101,7 @@
                 <div id="multi-setup" style="display:none; margin-top:20px; border-top:1px solid var(--border-color); padding-top:20px;">
                     <input type="text" id="room-id" placeholder="部屋名を入力">
                     <button class="primary-btn" onclick="hostRoom()">部屋を作成</button>
-                    <button class="primary-btn" onclick="joinRoom()" style="background:#4b5563">既存の部屋に参加</button>
+                    <button class="primary-btn" onclick="joinRoom()" style="background:#4b5563">参加する</button>
                 </div>
             </div>
             <div id="lobby-wait" style="display:none">
@@ -112,7 +113,7 @@
         </div>
     </div>
 
-    <!-- リザルト画面 -->
+    <!-- 2. リザルト画面 -->
     <div id="result-overlay" style="display:none">
         <div class="box">
             <h1 style="color:var(--gold); margin-top:0; font-size: 2rem;">最終結果発表</h1>
@@ -121,7 +122,7 @@
         </div>
     </div>
 
-    <!-- ポップアップ -->
+    <!-- 3. モーダル（同盟・交易承認） -->
     <div id="generic-modal" style="display:none">
         <div class="box">
             <h3 id="modal-text">-</h3>
@@ -133,8 +134,8 @@
         </div>
     </div>
 
-    <!-- サイドバー -->
-    <div id="sidebar">
+    <!-- 4. サイドバー -->
+    <div id="sidebar" style="display: none;">
         <div class="info-card">
             <h2 style="font-size: 1.2rem; margin: 0 0 10px 0; color: var(--accent); border-bottom: 2px solid var(--accent); display: inline-block;">World War III</h2>
             <h4 id="turn-display" style="color:var(--accent); margin:0">待機中</h4>
@@ -149,7 +150,8 @@
                 総資金: <span id="det-cash" style="color:var(--gold); font-weight: bold;">-</span>
             </div>
         </div>
-        <!-- 操作パネル -->
+        
+        <!-- 操作ボタンエリア -->
         <div id="actions" class="info-card" style="display:none">
             <div style="display:flex; gap:6px; margin-bottom:10px;">
                 <input type="number" id="act-amount" value="20" min="10" step="10" style="margin:0; font-size:13px; height:38px;">
@@ -167,6 +169,7 @@
                 <button onclick="game.nextRound()" style="background:var(--accent); width:100%; border:none; border-radius:8px; color:white; padding:14px; font-weight:bold; cursor:pointer;">次のラウンドを開始</button>
             </div>
         </div>
+
         <div class="log-chat-container">
             <div id="game-log" class="scroll-box"></div>
             <div id="chat-box" class="scroll-box"></div>
@@ -177,11 +180,12 @@
         </div>
     </div>
 
-    <!-- メイン -->
-    <div id="main" style="display:none;">
+    <!-- 5. メイン（マップ）エリア -->
+    <div id="main" style="display: none;">
         <div id="grid-container">
             <div id="grid"></div>
         </div>
+        <!-- フェーズ：国選択 -->
         <div id="selection-panel" style="display:none">
             <h3 id="selection-msg" style="margin-bottom: 5px;">担当する主要国を選んでください</h3>
             <div id="country-btn-list" class="country-btn-list"></div>
@@ -192,7 +196,7 @@
     </div>
 
 <script>
-    // 通信設定
+    // 通信設定：STUN/TURN冗長化
     const peerConfig = {
         config: {
             'iceServers': [
@@ -205,7 +209,7 @@
         }
     };
 
-    // 国データ
+    // 国リスト
     const MAJORS = [
         { id: 'uk', name: 'イギリス', short: '英国', color: '#006400', power: 10, cash: 30 },
         { id: 'fr', name: 'フランス', short: '仏国', color: '#b8860b', power: 10, cash: 30 },
@@ -231,7 +235,6 @@
             this.peer = null; this.conns = {}; this.myPeerId = null; this.isHost = false; 
             this.selectedIdx = null; this.hostId = null; this.myCountryId = null;
             this.lobbyMode = '';
-            console.log('GameCore Initialized');
         }
 
         resetData() {
@@ -245,17 +248,20 @@
             };
         }
 
+        // 表示一括切り替え
         updateUIVisibility() {
             const phase = this.state.phase;
-            const lobby = document.getElementById('lobby');
-            const main = document.getElementById('main');
-            const selection = document.getElementById('selection-panel');
-            const actions = document.getElementById('actions');
+            const lobbyEl = document.getElementById('lobby');
+            const mainEl = document.getElementById('main');
+            const sidebarEl = document.getElementById('sidebar');
+            const selectionEl = document.getElementById('selection-panel');
+            const actionsEl = document.getElementById('actions');
 
-            if (lobby) lobby.style.display = (phase === 'lobby') ? 'flex' : 'none';
-            if (main) main.style.display = (phase === 'lobby') ? 'none' : 'flex';
-            if (selection) selection.style.display = (phase === 'country_select') ? 'block' : 'none';
-            if (actions) actions.style.display = (phase === 'playing') ? 'block' : 'none';
+            if (lobbyEl) lobbyEl.style.display = (phase === 'lobby') ? 'flex' : 'none';
+            if (mainEl) mainEl.style.display = (phase === 'lobby') ? 'none' : 'flex';
+            if (sidebarEl) sidebarEl.style.display = (phase === 'lobby') ? 'none' : 'flex';
+            if (selectionEl) selectionEl.style.display = (phase === 'country_select') ? 'block' : 'none';
+            if (actionsEl) actionsEl.style.display = (phase === 'playing') ? 'block' : 'none';
         }
 
         setLobbyMode(mode) {
@@ -265,8 +271,7 @@
                 this.initMap();
                 this.state.phase = 'country_select';
             } else {
-                const ms = document.getElementById('multi-setup');
-                if (ms) ms.style.display = 'block';
+                document.getElementById('multi-setup').style.display = 'block';
             }
             this.updateUIVisibility();
             this.updateUI();
@@ -291,8 +296,7 @@
                 this.state.isStarted = true;
                 this.state.countrySelectionDone = true;
                 this.myCountryId = majorId;
-                console.log('ゲーム開始処理を実行');
-                this.addLog(`開戦：あなたの担当は ${MAJORS.find(m=>m.id===majorId).name} です。`);
+                this.addLog(`第1ラウンド開始。あなたの担当：${MAJORS.find(m=>m.id===majorId).name}`);
                 this.checkAIStart();
             } else if (this.isHost) {
                 this.state.players[pId] = majorId;
@@ -307,12 +311,11 @@
 
         multiplayStart() {
             if (!this.isHost) return;
-            console.log('ゲーム開始処理を実行(マルチ)');
             this.state.phase = 'playing';
             this.state.isStarted = true;
             this.state.countrySelectionDone = true;
             this.state.turnIdx = 0;
-            this.addLog("全プレイヤー配備完了。世界大戦の始まりです。");
+            this.addLog("全プレイヤー準備完了。対戦開始！");
             this.broadcast();
             this.checkAIStart();
         }
@@ -328,7 +331,7 @@
         }
 
         initMap() {
-            const all = [...MAJORS, ...SUPERS, ...MIDDLES, ...SMALLS]; // 81
+            const all = [...MAJORS, ...SUPERS, ...MIDDLES, ...SMALLS]; // 81 countries
             const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } };
             shuffle(all);
             this.state.grid = Array(96).fill(null).map((_, i) => {
@@ -348,8 +351,7 @@
 
         nextRound() {
             if (!this.isHost) return;
-            this.state.round++; 
-            this.initMap();
+            this.state.round++; this.initMap();
             this.state.phase = 'playing';
             this.state.isStarted = true;
             this.addLog(`第 ${this.state.round} ラウンド開始。`);
@@ -410,7 +412,7 @@
                         const enemyBase = isMajor ? this.getMajorBaseCell(targetCell.ownerId) : targetCell;
                         actorBase.cash += enemyBase.cash;
                         if (isMajor) {
-                            logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を滅亡させた！`;
+                            logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を制圧！`;
                             const targetOwnerId = targetCell.ownerId;
                             this.state.grid.forEach(c => { if(c && !c.isSea && c.ownerId === targetOwnerId) c.ownerId = actorId; });
                             enemyBase.power = 0; enemyBase.cash = 0;
@@ -426,7 +428,7 @@
                     } break;
                 case 'plus_max':
                     const pMax = Math.floor(actorBase.cash / 2);
-                    if (pMax > 0) { actorBase.cash -= pMax * 2; actorBase.power += pMax; logMsg = `${actorBase.name}が限界軍拡。`; }
+                    if (pMax > 0) { actorBase.cash -= pMax * 2; actorBase.power += pMax; logMsg = `${actorBase.name}が全額軍拡。`; }
                     break;
                 case 'alliance':
                     if (targetIdx === null) break;
@@ -453,7 +455,7 @@
                     const b_tid = this.state.grid[targetIdx].ownerId;
                     if (this.isAlly(actorId, b_tid)) { this.state.alliances = this.state.alliances.filter(p => !(p.includes(actorId) && p.includes(b_tid))); logMsg = `⚠️ ${actorBase.name}が同盟破棄。`; }
                     break;
-                case 'end': logMsg = `${actorBase.name}は戦力温存。`; break;
+                case 'end': logMsg = `${actorBase.name}はターン終了。`; break;
             }
             if (logMsg) this.addLog(logMsg);
             this.nextTurn();
@@ -566,7 +568,7 @@
             if (this.state.phase === 'country_select') {
                 this.renderCountryList();
                 const msc = document.getElementById('multi-start-controls');
-                if (msc) msc.style.display = (!this.isSolo && this.isHost) ? 'block' : 'none';
+                if (msc) msc.style.display = (this.lobbyMode === 'host') ? 'block' : 'none';
             }
 
             const gridEl = document.getElementById('grid'); if(!gridEl) return;
@@ -614,7 +616,7 @@
 
             document.getElementById('game-log').innerHTML = this.state.logs.slice().reverse().map(l => `<div>> ${l}</div>`).join('');
             document.getElementById('chat-box').innerHTML = this.state.chatLogs.slice().map(l => `<div>${l}</div>`).join('');
-            const sb = document.getElementById('score-board'); sb.innerHTML = '';
+            const sb = document.getElementById('score-board'); if(sb) sb.innerHTML = '';
             MAJORS.forEach(m => { sb.innerHTML += `<div class="score-row"><span>${m.name}</span> <span>${this.state.scores[m.id]}勝 (${this.state.maxLands[m.id]}領)</span></div>`; });
             
             const display = document.getElementById('turn-display');
@@ -624,13 +626,15 @@
             
             const myMid = this.state.players[this.myPeerId || 'host'];
             document.getElementById('my-info').textContent = `担当：${MAJORS.find(m => m.id === myMid)?.name || '未選択'}`;
+            if (this.canIMove()) document.getElementById('tax-btn').textContent = `徴税(${5 - this.state.taxUsed[myMid]})`;
         }
     }
 
     const game = new GameCore();
+    window.selectCountry = (id) => game.selectCountry(id);
 
     function hostRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名を入力");
+        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
         game.lobbyMode = 'host'; game.isHost = true; game.peer = new Peer(rId, peerConfig);
         game.peer.on('open', id => {
             game.myPeerId = id; document.getElementById('room-display').textContent = "部屋：" + id;
@@ -651,7 +655,7 @@
     }
 
     function joinRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名を入力");
+        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
         game.lobbyMode = 'guest'; game.isHost = false; game.hostId = rId; game.peer = new Peer(peerConfig);
         game.peer.on('open', id => {
             game.myPeerId = id; const conn = game.peer.connect(rId); game.conns[rId] = conn;
@@ -677,8 +681,11 @@
         });
     }
 
-    // グローバルに関数を公開
-    window.selectCountry = (id) => game.selectCountry(id);
+    // 初期化
+    window.onload = () => {
+        game.state.phase = 'lobby';
+        game.updateUIVisibility();
+    };
 </script>
 </body>
 </html>
