@@ -7,7 +7,7 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
-            /* 全体背景：スレートグレー */
+            /* 配色設定：ユーザーお気に入り */
             --bg-main: #374151;
             --panel-bg: #1f2937;
             --border-color: #4b5563;
@@ -50,17 +50,16 @@
             text-align: center; letter-spacing: 10px;
         }
 
-        /* ロビー・モーダル・リザルト */
+        /* ロビー・モーダル */
         #lobby, #result-overlay, #generic-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; }
         .box { background: var(--panel-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); width: 90%; max-width: 500px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
 
         input, select { background: #0f172a; border: 1px solid var(--border-color); color: #fff; padding: 12px; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
         
-        /* ボタン */
         .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .action-grid button { 
             width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; 
-            transition: all 0.2s; background: var(--btn-action); color: white; font-size: 13px; border-bottom: 3px solid rgba(0,0,0,0.2);
+            transition: all 0.2s; background: var(--btn-action); color: white; font-size: 13px; border-bottom: 3px solid rgba(0,0,0,0.1);
         }
         .action-grid button:hover:not(:disabled) { background: #64748b; transform: translateY(-1px); }
         .action-grid button.break-btn { background: var(--danger); border-bottom-color: #991b1b; }
@@ -100,11 +99,11 @@
 </head>
 <body>
 
-    <!-- アナウンス演出 -->
+    <!-- 告知オーバーレイ -->
     <div id="announce-overlay"><div id="announce-text">GAME START</div></div>
 
     <!-- 1. ロビー -->
-    <div id="lobby">
+    <div id="lobby" style="display: flex;">
         <div class="box">
             <h1 style="letter-spacing: 5px; color: var(--accent); font-size: 2.5rem; margin-bottom: 10px;">World War III</h1>
             <div id="lobby-setup">
@@ -113,7 +112,7 @@
                 <div id="multi-setup" style="display:none; margin-top:20px; border-top:1px solid var(--border-color); padding-top:20px;">
                     <input type="text" id="room-id" placeholder="部屋名を入力">
                     <button class="primary-btn" onclick="hostRoom()">部屋を作成</button>
-                    <button class="primary-btn" onclick="joinRoom()" style="background:#4b5563">既存の部屋に参加</button>
+                    <button class="primary-btn" onclick="joinRoom()" style="background:#4b5563">参加する</button>
                 </div>
             </div>
             <div id="lobby-wait" style="display:none">
@@ -125,7 +124,7 @@
         </div>
     </div>
 
-    <!-- 2. リザルト画面 -->
+    <!-- 2. リザルト -->
     <div id="result-overlay" style="display:none">
         <div class="box">
             <h1 style="color:var(--gold); margin-top:0; font-size: 2rem;">最終結果発表</h1>
@@ -134,7 +133,7 @@
         </div>
     </div>
 
-    <!-- 3. 承認モーダル -->
+    <!-- 3. モーダル -->
     <div id="generic-modal" style="display:none">
         <div class="box">
             <h3 id="modal-text">-</h3>
@@ -146,7 +145,7 @@
         </div>
     </div>
 
-    <!-- 4. サイドバーUI -->
+    <!-- 4. サイドバー -->
     <div id="sidebar" style="display: none;">
         <div class="info-card">
             <h2 style="font-size: 1.2rem; margin: 0 0 10px 0; color: var(--accent); border-bottom: 2px solid var(--accent); display: inline-block;">World War III</h2>
@@ -162,8 +161,6 @@
                 総資金: <span id="det-cash" style="color:var(--gold); font-weight: bold;">-</span>
             </div>
         </div>
-        
-        <!-- 操作パネル -->
         <div id="actions" class="info-card" style="display:none">
             <div style="display:flex; gap:6px; margin-bottom:10px;">
                 <input type="number" id="act-amount" value="20" min="10" step="10" style="margin:0; font-size:13px; height:38px;">
@@ -177,12 +174,10 @@
                 <button class="break-btn" onclick="game.handleActionRequest('break_alliance')">同盟破棄</button>
                 <button onclick="game.handleActionRequest('end')" style="background:#000">ターン終了</button>
             </div>
-            <!-- 次ラウンドボタン（復元） -->
             <div id="host-round-actions" style="display:none; margin-top:10px;">
                 <button onclick="game.nextRound()" style="background:var(--accent); width:100%; border:none; border-radius:8px; color:white; padding:14px; font-weight:bold; cursor:pointer;">次のラウンドを開始</button>
             </div>
         </div>
-
         <div class="log-chat-container">
             <div id="game-log" class="scroll-box"></div>
             <div id="chat-box" class="scroll-box"></div>
@@ -193,20 +188,19 @@
         </div>
     </div>
 
-    <!-- 5. メイン（マップ）エリア -->
+    <!-- 5. メインエリア -->
     <div id="main" style="display: none;">
         <div id="grid-container">
             <div id="grid"></div>
         </div>
         <div id="selection-panel" style="display:none">
-            <h3 id="selection-msg" style="margin-bottom: 5px;">担当する主要国を選んでください</h3>
+            <h3 style="margin-bottom: 5px;">担当する主要国を選んでください</h3>
             <div id="country-btn-list" class="country-btn-list"></div>
             <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">※人間プレイヤーが全員選び終わると自動的に開戦します</p>
         </div>
     </div>
 
 <script>
-    // 通信設定（ICEサーバー）
     const peerConfig = {
         config: {
             'iceServers': [
@@ -270,37 +264,26 @@
             const overlay = document.getElementById('announce-overlay');
             const text = document.getElementById('announce-text');
             if(!overlay || !text) return;
-            text.textContent = msg;
-            overlay.style.display = 'flex';
-            overlay.style.opacity = '1';
-            setTimeout(() => {
-                overlay.style.opacity = '0';
-                setTimeout(() => { overlay.style.display = 'none'; }, 500);
-            }, 2000);
+            text.textContent = msg; overlay.style.display = 'flex'; overlay.style.opacity = '1';
+            setTimeout(() => { overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 500); }, 2000);
         }
 
         setLobbyMode(mode) {
             this.lobbyMode = mode;
             if (mode === 'solo') {
-                this.isHost = true;
-                this.initMap();
-                this.state.phase = 'country_select';
+                this.isHost = true; this.initMap(); this.state.phase = 'country_select';
             } else {
                 document.getElementById('multi-setup').style.display = 'block';
             }
-            this.updateUIVisibility();
-            this.updateUI();
+            this.updateUIVisibility(); this.updateUI();
         }
 
         initAndShowMap() {
             if (this.isHost) {
-                this.initMap();
-                this.state.phase = 'country_select';
-                this.broadcast();
+                this.initMap(); this.state.phase = 'country_select'; this.broadcast();
             }
         }
 
-        // 修正事項1：AIと人間の区別
         isHumanPlayer(majorId) {
             return Object.keys(this.state.players).some(key => !key.startsWith('ai_') && this.state.players[key] === majorId);
         }
@@ -308,27 +291,13 @@
         selectCountry(majorId) {
             const pId = this.myPeerId || 'host';
             if (Object.values(this.state.players).includes(majorId)) return;
-
             if (this.lobbyMode === 'solo') {
                 this.state.players[pId] = majorId;
-                // AIに残りすべて割り当て
-                MAJORS.forEach(m => {
-                    if (!Object.values(this.state.players).includes(m.id)) {
-                        this.state.players['ai_' + m.id] = m.id;
-                    }
-                });
-                this.state.phase = 'playing';
-                this.state.isStarted = true;
-                this.state.countrySelectionDone = true;
-                this.myCountryId = majorId;
-                console.log('ゲーム開始(ソロ)');
-                this.showAnnounce("GAME START");
-                this.checkAIStart();
+                MAJORS.forEach(m => { if (!Object.values(this.state.players).includes(m.id)) this.state.players['ai_' + m.id] = m.id; });
+                this.state.phase = 'playing'; this.state.isStarted = true; this.state.countrySelectionDone = true;
+                this.myCountryId = majorId; this.showAnnounce("GAME START"); this.checkAIStart();
             } else if (this.isHost) {
-                this.state.players[pId] = majorId;
-                this.myCountryId = majorId;
-                this.checkAutoStart();
-                this.broadcast();
+                this.state.players[pId] = majorId; this.myCountryId = majorId; this.checkAutoStart(); this.broadcast();
             } else {
                 this.myCountryId = majorId;
                 if (this.conns[this.hostId]) this.conns[this.hostId].send({ type: 'select_country', peerId: pId, countryId: majorId });
@@ -336,25 +305,16 @@
             this.updateUI();
         }
 
-        // 修正事項2：自動スタート
         checkAutoStart() {
             if (!this.isHost) return;
             const humanCount = Object.keys(this.conns).length + 1;
             const chosenCount = Object.keys(this.state.players).filter(k => !k.startsWith('ai_')).length;
             if (chosenCount >= humanCount) {
-                MAJORS.forEach(m => {
-                    if (!Object.values(this.state.players).includes(m.id)) {
-                        this.state.players['ai_' + m.id] = m.id;
-                    }
-                });
-                this.state.phase = 'playing';
-                this.state.isStarted = true;
-                this.state.countrySelectionDone = true;
-                this.state.turnIdx = 0;
+                MAJORS.forEach(m => { if (!Object.values(this.state.players).includes(m.id)) this.state.players['ai_' + m.id] = m.id; });
+                this.state.phase = 'playing'; this.state.isStarted = true; this.state.countrySelectionDone = true; this.state.turnIdx = 0;
                 this.addLog("全プレイヤー準備完了。対戦開始！");
                 setTimeout(() => this.showAnnounce("GAME START"), 500);
-                this.broadcast();
-                this.checkAIStart();
+                this.broadcast(); this.checkAIStart();
             }
         }
 
@@ -377,28 +337,19 @@
                 const isIsland = (x >= 9 && x <= 11 && y <= 2);
                 const isPeninsula = (x >= 8 && x <= 9 && y >= 4);
                 if (isMainland || isIsland || isPeninsula) {
-                    const c = all.pop();
-                    return { ...c, ownerId: c.id, pos: i, power: c.power, cash: c.cash };
+                    const c = all.pop(); return { ...c, ownerId: c.id, pos: i, power: c.power, cash: c.cash };
                 }
                 return { isSea: true, pos: i };
             });
-            MAJORS.forEach(m => { 
-                this.state.taxUsed[m.id] = 0; 
-                this.state.warCooldown[m.id] = 0; 
-            });
+            MAJORS.forEach(m => { this.state.taxUsed[m.id] = 0; this.state.warCooldown[m.id] = 0; });
             this.state.turnIdx = 0; this.state.winner = null; this.state.alliances = [];
         }
 
         nextRound() {
             if (!this.isHost) return;
-            this.state.round++; 
-            this.initMap();
-            this.state.phase = 'playing';
-            this.state.isStarted = true;
+            this.state.round++; this.initMap(); this.state.phase = 'playing'; this.state.isStarted = true;
             this.addLog(`第 ${this.state.round} ラウンド開始。`);
-            this.broadcast();
-            this.showAnnounce(`ROUND ${this.state.round}`);
-            this.checkAIStart();
+            this.broadcast(); this.showAnnounce(`ROUND ${this.state.round}`); this.checkAIStart();
         }
 
         broadcast() {
@@ -408,8 +359,7 @@
                 if (count > this.state.maxLands[m.id]) this.state.maxLands[m.id] = count;
             });
             Object.values(this.conns).forEach(c => c.send({ type: 'sync', state: this.state }));
-            this.updateUIVisibility();
-            this.updateUI();
+            this.updateUIVisibility(); this.updateUI();
         }
 
         addLog(msg) { if (this.isHost) { this.state.logs.push(msg); if (this.state.logs.length > 50) this.state.logs.shift(); } }
@@ -455,8 +405,7 @@
                         actorBase.cash += enemyBase.cash;
                         if (isMajor) {
                             logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を制圧！`;
-                            const targetOwnerId = targetCell.ownerId;
-                            this.state.grid.forEach(c => { if(c && !c.isSea && c.ownerId === targetOwnerId) c.ownerId = actorId; });
+                            const tID = targetCell.ownerId; this.state.grid.forEach(c => { if(c && !c.isSea && c.ownerId === tID) c.ownerId = actorId; });
                             enemyBase.power = 0; enemyBase.cash = 0;
                         } else { logMsg = `${actorBase.name}が${targetCell.name}を制圧。`; targetCell.ownerId = actorId; }
                         if (!this.isHumanPlayer(actorId)) this.state.warCooldown[actorId] = 3;
@@ -470,7 +419,7 @@
                     } break;
                 case 'plus_max':
                     const pMax = Math.floor(actorBase.cash / 2);
-                    if (pMax > 0) { actorBase.cash -= pMax * 2; actorBase.power += pMax; logMsg = `${actorBase.name}が限界軍拡。`; }
+                    if (pMax > 0) { actorBase.cash -= pMax * 2; actorBase.power += pMax; logMsg = `${actorBase.name}が全額軍拡。`; }
                     break;
                 case 'alliance':
                     if (targetIdx === null) break;
@@ -500,13 +449,10 @@
                             const targetBase = this.getMajorBaseCell(mTarget.ownerId);
                             targetBase.power = Math.floor(targetBase.power / 2);
                             logMsg = `🚀 ${actorBase.name}のミサイルが${MAJORS.find(m=>m.id===mTarget.ownerId)?.name || SUPERS.find(s=>s.id===mTarget.ownerId)?.name}に着弾！`;
-                        } else {
-                            mTarget.power = Math.floor(mTarget.power / 2);
-                            logMsg = `🚀 ${actorBase.name}のミサイルが${mTarget.name}に命中！`;
-                        }
+                        } else { mTarget.power = Math.floor(mTarget.power / 2); logMsg = `🚀 ${actorBase.name}のミサイルが${mTarget.name}に命中！`; }
                     } else { logMsg = "ミサイル費用が足りません。"; }
                     break;
-                case 'end': logMsg = `${actorBase.name}は戦力維持。`; break;
+                case 'end': logMsg = `${actorBase.name}はターン終了。`; break;
             }
             if (logMsg) this.addLog(logMsg);
             this.nextTurn();
@@ -526,16 +472,11 @@
         }
 
         showModal(type, fromId) {
-            const modal = document.getElementById('generic-modal'); 
-            const timerEl = document.getElementById('modal-timer');
-            if(!modal) return;
-            modal.style.display = 'flex';
+            const modal = document.getElementById('generic-modal'); const timerEl = document.getElementById('modal-timer');
+            if(!modal) return; modal.style.display = 'flex';
             let timeLeft = 10; timerEl.textContent = timeLeft;
             document.getElementById('modal-text').textContent = `${MAJORS.find(m=>m.id===fromId).name}から同盟申請`;
-            this.modalTimer = setInterval(() => {
-                timeLeft--; timerEl.textContent = timeLeft;
-                if (timeLeft <= 0) this.closeModal(false, type, fromId);
-            }, 1000);
+            this.modalTimer = setInterval(() => { timeLeft--; timerEl.textContent = timeLeft; if (timeLeft <= 0) this.closeModal(false, type, fromId); }, 1000);
             document.getElementById('modal-yes').onclick = () => this.closeModal(true, type, fromId);
             document.getElementById('modal-no').onclick = () => this.closeModal(false, type, fromId);
         }
@@ -557,31 +498,52 @@
             if (!this.isHumanPlayer(nextId)) setTimeout(() => this.runAI(nextId), 1200);
         }
 
-        // 修正事項：AI索敵アルゴリズムの完全化
+        // 修正：AI索敵
         runAI(id) {
-            if (!this.isHost) return;
-            if (!this.state.warCooldown) this.state.warCooldown = {};
-            if (this.state.warCooldown[id] === undefined) this.state.warCooldown[id] = 0;
-            if (!this.state.taxUsed) this.state.taxUsed = {};
-            if (this.state.taxUsed[id] === undefined) this.state.taxUsed[id] = 0;
-            const actorBase = this.getMajorBaseCell(id); if (!actorBase) { this.nextTurn(); return; }
-            const myPosList = this.state.grid.filter(c => c && !c.isSea && c.ownerId === id).map(c => c.pos);
-            
-            if (this.state.warCooldown[id] > 0) { this.state.warCooldown[id]--; } 
-            else {
-                let bestT = null; let minP = Infinity;
-                this.state.grid.forEach((t, tidx) => {
-                    if (t && !t.isSea && t.ownerId !== id && !this.isAlly(id, t.ownerId)) {
-                        if (this.isAdj(myPosList, tidx)) {
-                            const enemyP = MAJORS.some(m => m.id === t.ownerId) ? this.getMajorBaseCell(t.ownerId).power : (SUPERS.some(s=>s.id===t.ownerId) ? SUPERS.find(s=>s.id===t.ownerId).power : t.power);
-                            if (actorBase.power > enemyP && enemyP < minP) { minP = enemyP; bestT = tidx; }
+            try {
+                if (!this.isHost) return;
+                if (!this.state.warCooldown) this.state.warCooldown = {};
+                if (this.state.warCooldown[id] === undefined) this.state.warCooldown[id] = 0;
+                if (!this.state.taxUsed) this.state.taxUsed = {};
+                if (this.state.taxUsed[id] === undefined) this.state.taxUsed[id] = 0;
+
+                const actorBase = this.getMajorBaseCell(id);
+                if (!actorBase) { this.nextTurn(); return; }
+
+                const myCells = this.state.grid.filter(c => c && !c.isSea && c.ownerId === id);
+
+                if (this.state.warCooldown[id] > 0) {
+                    this.state.warCooldown[id]--;
+                } else {
+                    let bestT = null; let minP = Infinity;
+                    this.state.grid.forEach((t, tidx) => {
+                        if (t && !t.isSea && t.ownerId !== id && !this.isAlly(id, t.ownerId)) {
+                            if (this.isAdj(myCells.map(c => c.pos), tidx)) {
+                                const isM = MAJORS.some(m => m.id === t.ownerId);
+                                const isS = SUPERS.some(s => s.id === t.ownerId);
+                                let p = t.power;
+                                if (isM) {
+                                    const base = this.getMajorBaseCell(t.ownerId);
+                                    if(base) p = base.power;
+                                } else if (isS) {
+                                    const sup = SUPERS.find(s=>s.id === t.ownerId);
+                                    if(sup) p = sup.power;
+                                }
+                                if (actorBase.power > p && p < minP) {
+                                    minP = p; bestT = tidx;
+                                }
+                            }
                         }
-                    }
-                });
-                if (bestT !== null) return this.applyAction(id, 'war', bestT, 0);
+                    });
+                    if (bestT !== null) return this.applyAction(id, 'war', bestT, 0);
+                }
+
+                if (actorBase.cash >= 20) return this.applyAction(id, 'plus_max', null, 0);
+                this.applyAction(id, 'end', null, 0);
+            } catch (err) {
+                console.error("AI思考エラー:", err);
+                this.applyAction(id, 'end', null, 0);
             }
-            if (actorBase.cash >= 20) return this.applyAction(id, 'plus_max', null, 0);
-            this.applyAction(id, 'end', null, 0);
         }
 
         checkRoundVictory() {
@@ -664,7 +626,6 @@
 
             document.getElementById('game-log').innerHTML = this.state.logs.slice().reverse().map(l => `<div>> ${l}</div>`).join('');
             document.getElementById('chat-box').innerHTML = this.state.chatLogs.slice().map(l => `<div>${l}</div>`).join('');
-            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
             const sb = document.getElementById('score-board'); if(sb) sb.innerHTML = '';
             MAJORS.forEach(m => { sb.innerHTML += `<div class="score-row"><span>${m.name}</span> <span>${this.state.scores[m.id]}勝 (${this.state.maxLands[m.id]}領)</span></div>`; });
             
@@ -672,12 +633,12 @@
             if (this.state.winner) display.textContent = `勝利者：${this.state.winner}`;
             else if (this.state.phase === 'playing') display.textContent = `${MAJORS[this.state.turnIdx].name}の番`;
             else display.textContent = "国を選択中...";
+            
             const myMid = this.state.players[this.myPeerId || 'host'];
             document.getElementById('my-info').textContent = `担当：${MAJORS.find(m => m.id === myMid)?.name || '未選択'}`;
-            
-            // 修正事項：第2ラウンド開始ボタンの表示制御
+            if (this.canIMove()) document.getElementById('tax-btn').textContent = `徴税(${5 - this.state.taxUsed[myMid]})`;
             const roundActions = document.getElementById('host-round-actions');
-            if (roundActions) { roundActions.style.display = (this.state.winner && this.isHost) ? 'block' : 'none'; }
+            if (roundActions) roundActions.style.display = (this.state.winner && this.isHost) ? 'block' : 'none';
         }
     }
 
@@ -685,7 +646,7 @@
     window.selectCountry = (id) => game.selectCountry(id);
 
     function hostRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("名前入力");
+        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
         game.lobbyMode = 'host'; game.isHost = true; game.peer = new Peer(rId, peerConfig);
         game.peer.on('open', id => {
             game.myPeerId = id; document.getElementById('room-display').textContent = "部屋：" + id;
@@ -700,15 +661,12 @@
                 if (d.type === 'alliance_answer') game.applyAction(d.fromId, d.agreed ? 'alliance_ok' : 'alliance_ng', d.toId, 0);
                 if (d.type === 'chat') { game.addChat(d.msg); game.broadcast(); }
             });
-            // 修正事項：通信切断時の自動AI引き継ぎ
             conn.on('close', () => {
                 const mid = game.state.players[conn.peer];
                 if (mid) {
-                    delete game.state.players[conn.peer];
-                    game.state.players['ai_' + mid] = mid;
-                    game.addLog(`⚠️ ${MAJORS.find(m=>m.id===mid).name} の通信が切断されました。AIが指揮を引き継ぎます。`);
-                    game.broadcast();
-                    if (MAJORS[game.state.turnIdx].id === mid) { game.checkAIStart(); }
+                    delete game.state.players[conn.peer]; game.state.players['ai_' + mid] = mid;
+                    game.addLog(`⚠️ ${MAJORS.find(m=>m.id===mid).name} の通信切断。AIが指揮を引き継ぎます。`);
+                    game.broadcast(); if (MAJORS[game.state.turnIdx].id === mid) game.checkAIStart();
                 }
                 delete game.conns[conn.peer];
             });
@@ -716,20 +674,15 @@
     }
 
     function joinRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("名前入力");
+        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
         game.lobbyMode = 'guest'; game.isHost = false; game.hostId = rId; game.peer = new Peer(peerConfig);
         game.peer.on('open', id => {
             game.myPeerId = id; const conn = game.peer.connect(rId); game.conns[rId] = conn;
-            conn.on('open', () => {
-                document.getElementById('wait-msg').textContent = "接続成功！ホストの開始を待っています...";
-                document.getElementById('wait-msg').style.color = "var(--success)";
-            });
+            conn.on('open', () => { document.getElementById('wait-msg').textContent = "接続成功！ホストの開始を待っています..."; document.getElementById('wait-msg').style.color = "var(--success)"; });
             conn.on('data', d => {
                 if (d.type === 'sync') { 
-                    const oldPhase = game.state.phase;
-                    const oldRound = game.state.round;
-                    game.state = d.state; 
-                    game.updateUI();
+                    const oldPhase = game.state.phase; const oldRound = game.state.round;
+                    game.state = d.state; game.updateUI();
                     if (oldPhase !== 'playing' && game.state.phase === 'playing') game.showAnnounce("GAME START");
                     if (oldPhase === 'playing' && game.state.round > oldRound) game.showAnnounce(`ROUND ${game.state.round}`);
                 }
