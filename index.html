@@ -3,116 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>world war 3</title>
+    <title>World War III</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
-            /* 明るいUI用カラー */
-            --bg-light: #f1f5f9;
-            --panel-light: #ffffff;
-            --text-main: #1e293b;
-            --border-light: #cbd5e1;
-            /* 既存維持カラー */
-            --ni: #8b0000; --de: #00008b; --uk: #006400; --fr: #b8860b; --ca: #4b0082;
-            --danger: #e74c3c; --gold: #f1c40f; --accent: #4f46e5; --success: #2ecc71;
-            --map-bg: #111827; /* マップ背景（薄黒い青） */
-            --btn-black: #000000; /* アクションボタン（黒） */
+            /* 全体背景：スレートグレー（目に優しい中間色） */
+            --bg-main: #374151;
+            --panel-bg: #1f2937;
+            --border-color: #4b5563;
+            --text-main: #f8fafc;
+            /* 国別カラー */
+            --uk: #006400; --fr: #b8860b; --de: #00008b; --ni: #8b0000; --ca: #4b0082;
+            --danger: #ef4444; --gold: #f1c40f; --silver: #94a3b8; --bronze: #cd7f32; --success: #22c55e; --accent: #6366f1;
+            /* 海の背景色：鮮やかなブルー */
+            --map-sea: #2563eb;
+            /* ボタンの色：ブルーグレー */
+            --btn-action: #4b5563;
         }
 
         body { 
-            margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; 
-            background: var(--bg-light); color: var(--text-main);
+            margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: var(--bg-main); color: var(--text-main);
             display: flex; flex-direction: column; min-height: 100vh; overflow-x: hidden; 
         }
         
         @media (min-width: 1000px) {
             body { flex-direction: row; }
-            #sidebar { width: 340px; height: 100vh; position: sticky; top: 0; border-right: 1px solid var(--border-light); background: var(--panel-light); display: flex; flex-direction: column; }
-            #main { flex: 1; padding: 15px; display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
+            #sidebar { width: 360px; height: 100vh; position: sticky; top: 0; border-right: 1px solid var(--border-color); background: var(--panel-bg); display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; }
+            #main { flex: 1; padding: 20px; background: var(--bg-main); display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
         }
 
         @media (max-width: 999px) {
-            #sidebar { width: 100%; border-bottom: 1px solid var(--border-light); padding: 10px; background: var(--panel-light); box-sizing: border-box; }
-            #main { width: 100%; padding: 5px; box-sizing: border-box; overflow-x: auto; }
+            #sidebar { width: 100%; border-bottom: 1px solid var(--border-color); padding: 10px; background: var(--panel-bg); box-sizing: border-box; }
+            #main { width: 100%; padding: 10px; box-sizing: border-box; overflow-x: auto; }
         }
 
-        /* ロビー・モーダル */
-        #lobby, #result-overlay, #generic-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; align-items: center; justify-content: center; }
-        .box { background: var(--panel-light); padding: 25px; border-radius: 12px; border: 1px solid var(--border-light); width: 90%; max-width: 500px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); color: var(--text-main); }
-        h1, h2, h3 { color: var(--text-main); margin-top: 0; }
+        /* ロビー・モーダル・リザルト */
+        #lobby, #result-overlay, #generic-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .box { background: var(--panel-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); width: 90%; max-width: 500px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
 
-        input, select { background: #fff; border: 1px solid var(--border-light); color: #000; padding: 10px; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+        input, select { background: #0f172a; border: 1px solid var(--border-color); color: #fff; padding: 12px; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
         
-        /* アクションボタン（黒ベース） */
-        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        /* アクションボタン群 */
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .action-grid button { 
             width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; 
-            transition: 0.2s; background: var(--btn-black); color: white; margin-bottom: 4px; font-size: 13px; 
+            transition: all 0.2s; background: var(--btn-action); color: white; font-size: 13px; border-bottom: 3px solid rgba(0,0,0,0.2);
         }
-        .action-grid button:hover:not(:disabled) { background: #333; }
+        .action-grid button:hover:not(:disabled) { background: #64748b; transform: translateY(-1px); }
+        .action-grid button:active:not(:disabled) { transform: translateY(1px); }
         .action-grid button.break-btn { background: var(--danger); }
-        .action-grid button.break-btn:hover { background: #c0392b; }
+        .action-grid button.break-btn:hover { background: #dc2626; }
         
-        button.primary-btn { background: var(--accent); color: white; padding: 12px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; width:100%; }
+        button.primary-btn { background: var(--accent); color: white; padding: 14px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size: 1.1rem; }
 
         /* マップグリッド (12x8) */
-        #grid-container { background: var(--map-bg); padding: 12px; border-radius: 12px; border: 2px solid #000; width: 100%; max-width: 100%; box-sizing: border-box; }
+        #grid-container { background: var(--map-sea); padding: 10px; border-radius: 12px; border: 4px solid #1e2937; width: 100%; max-width: 1100px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         #grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; width: 100%; aspect-ratio: 12 / 8; }
         .cell { 
-            aspect-ratio: 1; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            font-size: clamp(7px, 1.1vw, 11px); font-weight: bold; cursor: pointer; transition: 0.1s; position: relative; border: 1px solid rgba(255,255,255,0.05); 
+            aspect-ratio: 1; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            font-size: clamp(8px, 1.1vw, 12px); font-weight: bold; cursor: pointer; transition: 0.15s; position: relative; border: 1px solid rgba(255,255,255,0.1); color: #fff;
         }
         .cell.sea { visibility: hidden; pointer-events: none; border: none; }
-        .cell:not(.sea):hover { border-color: #fff; z-index: 5; transform: scale(1.05); }
-        .cell.selected { border: 2px solid #fff; box-shadow: 0 0 10px var(--accent); z-index: 10; }
+        .cell:not(.sea):hover { border-color: #fff; z-index: 5; transform: scale(1.08); box-shadow: 0 0 15px rgba(255,255,255,0.3); }
+        .cell.selected { border: 2px solid #fff; box-shadow: 0 0 15px var(--accent); z-index: 10; }
         .cell.trade-target { border: 2px solid var(--gold); animation: flash 1s infinite; }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .ally-mark { position: absolute; top: 1px; right: 1px; font-size: 10px; }
 
-        /* 国選択パネル (マップの下に表示) */
-        #selection-panel { width: 100%; background: var(--panel-light); border: 1px solid var(--border-light); border-radius: 10px; padding: 15px; margin-top: 15px; text-align: center; }
-        .country-btn-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
-        .country-choice { padding: 10px 15px; border-radius: 6px; border: 2px solid transparent; cursor: pointer; font-weight: bold; font-size: 13px; min-width: 90px; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-        .country-choice.taken { opacity: 0.2; cursor: not-allowed; text-decoration: line-through; }
-        .country-choice.active { border-color: #000; box-shadow: 0 0 10px rgba(0,0,0,0.2); transform: translateY(-2px); }
+        /* 国選択パネル */
+        #selection-panel { width: 100%; background: var(--panel-bg); border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; margin-top: 20px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .country-btn-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
+        .country-choice { padding: 12px 18px; border-radius: 8px; border: 3px solid transparent; cursor: pointer; font-weight: bold; font-size: 14px; min-width: 100px; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.8); transition: 0.2s; }
+        .country-choice.taken { opacity: 0.15; cursor: not-allowed; text-decoration: line-through; filter: grayscale(1); }
+        .country-choice.active { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 20px rgba(255,255,255,0.4); }
 
-        /* スクロールエリア (ログ・チャット) */
-        .scroll-box { overflow-y: auto; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 12px; margin-bottom: 10px; }
-        #game-log { height: 140px; border-left: 4px solid var(--accent); color: #334155; }
-        #chat-box { height: 110px; border-left: 4px solid var(--success); color: #475569; }
-        .chat-input-row { display: flex; gap: 4px; }
+        /* ログ・チャットエリア（崩れ防止） */
+        .log-chat-container { flex: 1; display: flex; flex-direction: column; min-height: 0; gap: 10px; margin-top: 5px; }
+        .scroll-box { overflow-y: auto; background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 12px; }
+        #game-log { flex: 1.2; min-height: 180px; border-left: 5px solid var(--accent); }
+        #chat-box { flex: 1; min-height: 140px; color: #a5b4fc; border-left: 5px solid var(--success); }
+        .chat-input-row { display: flex; gap: 6px; }
         
-        .score-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--bg-light); color: var(--text-main); }
-        .info-card { background: var(--panel-light); padding: 15px; border-radius: 10px; margin-bottom: 12px; border: 1px solid var(--border-light); }
+        .info-card { background: #1f2937; padding: 15px; border-radius: 10px; margin-bottom: 12px; border: 1px solid var(--border-color); }
+        .score-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid #374151; }
         .current-turn-glow { animation: glow 1.5s infinite alternate; }
-        @keyframes glow { from { box-shadow: 0 0 2px #fff; } to { box-shadow: 0 0 12px var(--accent); } }
+        @keyframes glow { from { box-shadow: 0 0 5px #fff; } to { box-shadow: 0 0 20px var(--accent); } }
 
-        .rank-item { padding: 15px; margin: 10px 0; border-radius: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .rank-1 { background: var(--gold); color: #000; }
-        .rank-2 { background: var(--silver); color: #000; }
-        .rank-3 { background: var(--bronze); color: #000; }
+        .rank-item { padding: 15px; margin: 10px 0; border-radius: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; color: #000; }
     </style>
 </head>
 <body>
 
-    <!-- ロビー画面 -->
+    <!-- ロビー -->
     <div id="lobby">
         <div class="box">
-            <h1 style="letter-spacing: 4px; margin-bottom: 20px;">WORLD WAR 3</h1>
+            <h1 style="letter-spacing: 5px; color: var(--accent); font-size: 2.5rem;">World War III</h1>
             <div id="lobby-setup">
-                <button class="primary-btn" onclick="game.setLobbyMode('solo')" style="margin-bottom:12px; height: 50px; font-size: 1.1rem;">一人でやる (AI対戦)</button>
-                <button class="primary-btn" onclick="game.setLobbyMode('team')" style="background:var(--success); height: 50px; font-size: 1.1rem;">チームでやる (マルチプレイ)</button>
-                <div id="multi-setup" style="display:none; margin-top:20px; border-top:1px solid var(--border-light); padding-top:20px;">
-                    <input type="text" id="room-id" placeholder="部屋名（合言葉）を入力">
-                    <button class="primary-btn" onclick="hostRoom()">部屋を作る</button>
-                    <button class="primary-btn" onclick="joinRoom()" style="background:#333">参加する</button>
+                <button class="primary-btn" onclick="game.setLobbyMode('solo')" style="margin-bottom:15px;">一人で遊ぶ (AI対戦)</button>
+                <button class="primary-btn" onclick="game.setLobbyMode('team')" style="background:var(--success)">友達と遊ぶ (マルチプレイ)</button>
+                <div id="multi-setup" style="display:none; margin-top:20px; border-top:1px solid var(--border-color); padding-top:20px;">
+                    <input type="text" id="room-id" placeholder="部屋名（合言葉）を決める">
+                    <button class="primary-btn" onclick="hostRoom()">部屋を作成</button>
+                    <button class="primary-btn" onclick="joinRoom()" style="background:#4b5563">既存の部屋に参加</button>
                 </div>
             </div>
             <div id="lobby-wait" style="display:none">
-                <p id="room-display" style="color:var(--accent); font-weight:bold; font-size: 1.2rem;"></p>
-                <div id="player-list" style="text-align:left; font-size:14px; margin:15px 0; background: var(--bg-light); padding: 10px; border-radius: 6px;"></div>
-                <button id="start-btn" class="primary-btn" onclick="game.initAndShowMap()" style="display:none; background:var(--success)">世界を公開して国を選ぶ</button>
-                <small id="wait-msg">通信を待機しています...</small>
+                <p id="room-display" style="color:var(--accent); font-weight:bold; font-size: 1.4rem;"></p>
+                <div id="player-list" style="text-align:left; font-size:14px; margin:15px 0; background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);"></div>
+                <button id="start-btn" class="primary-btn" onclick="game.initAndShowMap()" style="display:none; background:var(--success)">世界を生成して開始</button>
+                <small id="wait-msg" style="opacity: 0.8;">通信待機中...</small>
             </div>
         </div>
     </div>
@@ -120,18 +120,18 @@
     <!-- リザルト画面 -->
     <div id="result-overlay" style="display:none">
         <div class="box">
-            <h1 style="color:#d4af37; margin-top:0;">最終結果発表</h1>
+            <h1 style="color:var(--gold); margin-top:0; font-size: 2rem;">最終結果発表</h1>
             <div id="ranking-list"></div>
-            <button class="primary-btn" onclick="location.reload()" style="margin-top:20px; background:var(--danger)">ホームに戻る</button>
+            <button class="primary-btn" onclick="location.reload()" style="margin-top:20px; background:var(--danger)">ホーム画面に戻る</button>
         </div>
     </div>
 
-    <!-- ポップアップ -->
+    <!-- モーダル -->
     <div id="generic-modal" style="display:none">
         <div class="box">
             <h3 id="modal-text">-</h3>
-            <div id="modal-timer" style="font-size:2.5rem; color:var(--danger); font-weight:bold;">20</div>
-            <div id="modal-options" style="display:flex; gap:10px; margin-top:20px;">
+            <div id="modal-timer" style="font-size:3rem; color:var(--danger); font-weight:bold;">20</div>
+            <div id="modal-options" style="display:flex; gap:12px; margin-top:20px;">
                 <button id="modal-yes" class="primary-btn" style="background:var(--success); flex:1;">承認</button>
                 <button id="modal-no" class="primary-btn" style="background:var(--danger); flex:1;">拒否</button>
             </div>
@@ -141,28 +141,26 @@
     <!-- サイドバー -->
     <div id="sidebar">
         <div class="info-card">
-            <h2 style="font-size: 1.1rem; margin: 0 0 10px 0; border-bottom: 2px solid var(--accent); display: inline-block;">world war 3</h2>
+            <h2 style="font-size: 1.2rem; margin: 0 0 10px 0; color: var(--accent); border-bottom: 2px solid var(--accent); display: inline-block;">World War III</h2>
             <h4 id="turn-display" style="color:var(--accent); margin:0">待機中</h4>
-            <p id="my-info" style="font-size:12px; margin:5px 0 0; opacity:0.8"></p>
+            <p id="my-info" style="font-size:12px; margin:5px 0 0; opacity:0.9"></p>
         </div>
 
-        <div class="info-card">
-            <div id="score-board"></div>
-        </div>
+        <div class="info-card"><div id="score-board"></div></div>
 
         <div class="info-card" id="detail-panel">
-            <div id="det-name" style="font-size: 1rem; font-weight: bold; color: var(--accent);">選択なし</div>
-            <div id="det-stats" style="font-size: 12px; margin-top: 6px; line-height: 1.6;">
+            <div id="det-name" style="font-size: 1.1rem; font-weight: bold; color: var(--accent);">国を選択</div>
+            <div id="det-stats" style="font-size: 13px; margin-top: 8px; line-height: 1.6;">
                 所有者: <span id="det-owner">-</span><br>
-                総戦力: <span id="det-power" style="color:#e63946; font-weight: bold;">-</span> / 
-                総資金: <span id="det-cash" style="color:#f59e0b; font-weight: bold;">-</span>
+                総戦力: <span id="det-power" style="color:var(--danger); font-weight: bold;">-</span> / 
+                総資金: <span id="det-cash" style="color:var(--gold); font-weight: bold;">-</span>
             </div>
         </div>
 
         <div class="info-card" id="actions" style="display:none">
-            <div style="display:flex; gap:5px; margin-bottom:8px;">
-                <input type="number" id="act-amount" value="20" min="10" step="10" style="margin:0; font-size:12px; height:34px;">
-                <button onclick="game.handleActionRequest('plus_max')" style="background:var(--success); margin:0; width:100px; height:34px; border:none; border-radius:6px; cursor:pointer; color:white; font-weight:bold; font-size: 11px;">軍拡(全額)</button>
+            <div style="display:flex; gap:6px; margin-bottom:10px;">
+                <input type="number" id="act-amount" value="20" min="10" step="10" style="margin:0; font-size:13px; height:38px;">
+                <button onclick="game.handleActionRequest('plus_max')" style="background:var(--success); margin:0; width:110px; height:38px; border:none; border-radius:6px; cursor:pointer; color:white; font-weight:bold; font-size: 12px;">軍拡(全額)</button>
             </div>
             <div class="action-grid">
                 <button onclick="game.handleActionRequest('war')">戦争(総力戦)</button>
@@ -172,38 +170,36 @@
                 <button class="break-btn" onclick="game.handleActionRequest('break_alliance')">同盟破棄</button>
                 <button onclick="game.handleActionRequest('end')" style="background:#000">ターン終了</button>
             </div>
-            <div id="host-round-actions" style="display:none; margin-top:8px;">
-                <button onclick="game.nextRound()" style="background:#4f46e5; width:100%; border:none; border-radius:6px; color:white; padding:12px; font-weight:bold; cursor:pointer;">次のラウンドを開始</button>
+            <div id="host-round-actions" style="display:none; margin-top:10px;">
+                <button onclick="game.nextRound()" style="background:var(--accent); width:100%; border:none; border-radius:8px; color:white; padding:14px; font-weight:bold; cursor:pointer;">次のラウンドを開始</button>
             </div>
         </div>
 
-        <div class="info-card" style="flex:1; display:flex; flex-direction:column; min-height: 0;">
+        <div class="log-chat-container">
             <div id="game-log" class="scroll-box"></div>
             <div id="chat-box" class="scroll-box"></div>
             <div class="chat-input-row">
-                <input type="text" id="chat-input" placeholder="チャットメッセージ..." style="margin:0; font-size:12px; height:32px;">
-                <button onclick="game.sendChat()" style="width:50px; margin:0; background:var(--accent); border:none; border-radius:4px; color:white; cursor:pointer; font-weight: bold;">送</button>
+                <input type="text" id="chat-input" placeholder="チャットメッセージ..." style="margin:0; font-size:13px; height:36px;">
+                <button onclick="game.sendChat()" style="width:50px; margin:0; background:var(--accent); border:none; border-radius:6px; color:white; cursor:pointer; font-weight: bold;">送</button>
             </div>
         </div>
     </div>
 
-    <!-- メインコンテンツ -->
+    <!-- メイン -->
     <div id="main">
         <div id="grid-container">
             <div id="grid"></div>
         </div>
 
-        <!-- 国選択パネル (マップの下に動的に表示) -->
         <div id="selection-panel" style="display:none">
-            <h3 style="margin-bottom: 5px;">担当する主要国を選択してください</h3>
-            <p style="font-size: 11px; opacity: 0.7; margin-top: 0;">盤面の配置を見て有利な国を選ぼう</p>
+            <h3 style="margin-bottom: 5px;">担当する主要国を選んでください</h3>
+            <p style="font-size: 12px; opacity: 0.8; margin-top: 0;">配置を見て有利な国を選択してください</p>
             <div id="country-btn-list" class="country-btn-list"></div>
-            <button id="confirm-country-btn" class="primary-btn" disabled onclick="game.confirmCountrySelection()" style="margin-top: 15px; max-width: 300px;">この国で参戦を決定</button>
+            <button id="confirm-country-btn" class="primary-btn" disabled onclick="game.confirmCountrySelection()" style="margin-top: 20px; max-width: 320px;">この国で参戦決定</button>
         </div>
     </div>
 
 <script>
-    // 通信設定
     const peerConfig = {
         config: {
             'iceServers': [
@@ -216,7 +212,6 @@
         }
     };
 
-    // 国データ
     const MAJORS = [
         { id: 'uk', name: 'イギリス', short: '英国', color: '#006400', power: 10, cash: 30 },
         { id: 'fr', name: 'フランス', short: '仏国', color: '#b8860b', power: 10, cash: 30 },
@@ -232,9 +227,9 @@
         { id: 'br', name: 'ブラジル', short: '伯国', color: '#000', power: 300, cash: 900 }
     ];
     const MIDDLES = ["オーストラリア", "韓国", "イタリア", "スペイン", "メキシコ", "インドネシア", "トルコ", "サウジアラビア", "南アフリカ", "アルゼンチン", "オランダ", "スイス", "スウェーデン", "ポーランド", "タイ", "マレーシア", "フィリピン", "エジプト", "パキスタン", "ナイジェリア", "イラン", "コロンビア", "ベトナム", "チリ", "カザフスタン"]
-        .map((n, i) => ({ id: `m${i}`, name: n, short: n.slice(0, 2), color: '#333', power: 50, cash: 150 }));
+        .map((n, i) => ({ id: `m${i}`, name: n, short: n.slice(0, 2), color: '#334155', power: 50, cash: 150 }));
     const SMALLS = ["ニュージーランド", "シンガポール", "アイルランド", "ノルウェー", "デンマーク", "フィンランド", "ベルギー", "オーストリア", "ポルトガル", "ギリシャ", "イスラエル", "チェコ", "ハンガリー", "ルーマニア", "ブルガリア", "スロバキア", "クロアチア", "リトアニア", "ラトビア", "エストニア", "アイスランド", "ルクセンブルク", "モナコ", "リヒテンシュタイン", "アンドラ", "サンマリノ", "ブータン", "モルディブ", "フィジー", "ブルネイ", "バーレーン", "カタール", "オマーン", "ウルグアイ", "パラグアイ", "エクアドル", "ジャマイカ", "トリニダード・トバゴ", "バハマ", "キプロス", "スロベニア", "コスタリカ", "パナマ", "クウェート", "マルタ", "モーリシャス"]
-        .map((n, i) => ({ id: `s${i}`, name: n, short: n.slice(0, 2), color: '#666', power: 10, cash: 30 }));
+        .map((n, i) => ({ id: `s${i}`, name: n, short: n.slice(0, 2), color: '#64748b', power: 10, cash: 30 }));
 
     class GameCore {
         constructor() {
@@ -310,7 +305,7 @@
                 this.state.countrySelectionDone = true;
                 this.addLog("全プレイヤー準備完了。開戦！");
                 this.broadcast();
-                // AI初手判定と起動
+                // AI初手判定と起動（Turn 0）
                 const firstId = MAJORS[0].id;
                 const isFirstHuman = Object.values(this.state.players).includes(firstId);
                 if (!isFirstHuman) {
@@ -343,7 +338,7 @@
         nextRound() {
             if (!this.isHost) return;
             this.state.round++; this.initMap();
-            this.addLog(`第 ${this.state.round} ラウンド開始。`);
+            this.addLog(`第 ${this.state.round} ラウンド開始。日本の手番です。`);
             this.broadcast();
             const firstId = MAJORS[0].id;
             if (!Object.values(this.state.players).includes(firstId)) {
@@ -367,7 +362,7 @@
         sendChat() {
             const input = document.getElementById('chat-input');
             const txt = input.value.trim(); if (!txt) return;
-            const sender = MAJORS.find(m => m.id === this.myCountryId)?.name || '??';
+            const sender = MAJORS.find(m => m.id === this.myCountryId)?.name || '観戦者';
             if (this.isHost) { this.addChat(`${sender}: ${txt}`); this.broadcast(); }
             else { this.conns[this.hostId].send({ type: 'chat', msg: `${sender}: ${txt}` }); }
             input.value = '';
@@ -380,7 +375,7 @@
             if (type === 'trade') {
                 if (this.selectedIdx === null) return alert("交易相手の領土を選択してください");
                 const targetId = this.state.grid[this.selectedIdx].ownerId;
-                if (!MAJORS.some(m => m.id === targetId) || targetId === myId) return alert("相手は主要国である必要があります");
+                if (!MAJORS.some(m => m.id === targetId) || targetId === myId) return alert("主要国相手のみ可能です");
                 if (this.isHost) this.applyAction(myId, 'trade_req', this.selectedIdx, amount);
                 else this.conns[this.hostId].send({ type: 'action', actorId: myId, actType: 'trade_req', targetIdx: this.selectedIdx, amount });
                 return;
@@ -410,7 +405,7 @@
                         const enemyBase = isMajor ? this.getMajorBaseCell(targetCell.ownerId) : targetCell;
                         actorBase.cash += enemyBase.cash;
                         if (isMajor) {
-                            logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を併合！`;
+                            logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を滅亡させた！`;
                             const targetOwnerId = targetCell.ownerId;
                             this.state.grid.forEach(c => { if(c && !c.isSea && c.ownerId === targetOwnerId) c.ownerId = actorId; });
                             enemyBase.power = 0; enemyBase.cash = 0;
@@ -422,7 +417,7 @@
                 case 'tax':
                     if (this.state.taxUsed[actorId] < 5) {
                         const gain = myCells.length * 20; actorBase.cash += gain; this.state.taxUsed[actorId]++;
-                        logMsg = `${actorBase.name}が徴税を実施(+${gain})`;
+                        logMsg = `${actorBase.name}が徴税を実施。`;
                     } break;
                 case 'plus_max':
                     const pMax = Math.floor(actorBase.cash / 2);
@@ -448,14 +443,14 @@
                     break;
                 case 'trade_final':
                     const aB = this.getMajorBaseCell(actorId); const bB = this.getMajorBaseCell(targetIdx); const tC = this.state.grid[amount];
-                    if (aB.cash >= targetIdx) { aB.cash -= targetIdx; bB.cash += targetIdx; tC.ownerId = bB.id; logMsg = `💰 交易成立：${aB.name}の領土を${bB.name}が取得。`; }
+                    if (aB.cash >= targetIdx) { aB.cash -= targetIdx; bB.cash += targetIdx; tC.ownerId = bB.id; logMsg = `💰 交易成立：${aB.name}の領土が${bB.name}へ。`; }
                     break;
                 case 'break_alliance':
                     if (targetIdx === null) break;
                     const b_tid = this.state.grid[targetIdx].ownerId;
                     if (this.isAlly(actorId, b_tid)) { this.state.alliances = this.state.alliances.filter(p => !(p.includes(actorId) && p.includes(b_tid))); logMsg = `⚠️ ${actorBase.name}が同盟破棄。`; }
                     break;
-                case 'end': logMsg = `${actorBase.name}は戦力温存。`; break;
+                case 'end': logMsg = `${actorBase.name}はターン終了。`; break;
             }
             if (logMsg) this.addLog(logMsg);
             this.nextTurn();
@@ -477,9 +472,9 @@
             const timerEl = document.getElementById('modal-timer');
             modal.style.display = 'flex';
             let timeLeft = 20; timerEl.textContent = timeLeft;
-            if (type === 'alliance') document.getElementById('modal-text').textContent = `${MAJORS.find(m=>m.id===fromId).name}から同盟申請`;
+            if (type === 'alliance') document.getElementById('modal-text').textContent = `${MAJORS.find(m=>m.id===fromId).name}からの同盟申請`;
             else if (type === 'trade_1') document.getElementById('modal-text').textContent = `${MAJORS.find(m=>m.id===fromId).name}が資金${amount}を要求。対価として相手の領土を1つ奪いますか？`;
-            else if (type === 'trade_2') document.getElementById('modal-text').textContent = `${MAJORS.find(m=>m.id===fromId).name}から：資金${amount}と引き換えに領土「${this.state.grid[cellIdx].name}」を受け取りますか？`;
+            else if (type === 'trade_2') document.getElementById('modal-text').textContent = `${MAJORS.find(m=>m.id===fromId).name}から提案：資金${amount}と引き換えに領土「${this.state.grid[cellIdx].name}」を受け取りますか？`;
 
             this.modalTimer = setInterval(() => {
                 timeLeft--; timerEl.textContent = timeLeft;
@@ -497,8 +492,8 @@
                 if (this.isHost) this.applyAction(fromId, ans, this.myCountryId, 0);
                 else this.conns[this.hostId].send({ type: 'alliance_answer', fromId, toId: this.myCountryId, agreed });
             } else if (type === 'trade_1') {
-                if (agreed) { this.isSelectingLandForTrade = true; this.tradeContext = { fromId, amount }; alert("奪いたい相手の領土をクリックしてください"); this.updateUI(); }
-                else { if (this.isHost) { this.addLog("交易拒絶"); this.nextTurn(); } else this.conns[this.hostId].send({ type: 'chat', msg: "[Sys] 交易拒絶" }); }
+                if (agreed) { this.isSelectingLandForTrade = true; this.tradeContext = { fromId, amount }; this.updateUI(); }
+                else { if (this.isHost) { this.addLog("交易拒否"); this.nextTurn(); } else this.conns[this.hostId].send({ type: 'chat', msg: "[Sys] 交易拒絶" }); }
             } else if (type === 'trade_2') {
                 if (agreed) {
                     if (this.isHost) this.applyAction(fromId, 'trade_final', this.myCountryId, cellIdx);
@@ -519,7 +514,6 @@
 
         runAI(id) {
             if (!this.isHost) return;
-            // 初期化ガード
             if (!this.state.warCooldown) this.state.warCooldown = {};
             if (this.state.warCooldown[id] === undefined) this.state.warCooldown[id] = 0;
             if (!this.state.taxUsed) this.state.taxUsed = {};
@@ -564,7 +558,10 @@
         showFinalResult() {
             const ranking = MAJORS.map(m => ({ name: m.name, score: this.state.scores[m.id], lands: this.state.maxLands[m.id] })).sort((a, b) => b.score - a.score || b.lands - a.lands);
             const list = document.getElementById('ranking-list'); list.innerHTML = "";
-            ranking.slice(0, 3).forEach((r, i) => { list.innerHTML += `<div class="rank-item rank-${i+1}"><span>${i+1}位: ${r.name}</span><span>${r.score}勝</span></div>`; });
+            ranking.slice(0, 3).forEach((r, i) => {
+                const colors = ['#f1c40f', '#bdc3c7', '#cd7f32'];
+                list.innerHTML += `<div class="rank-item" style="background:${colors[i]}"><span>${i+1}位: ${r.name}</span><span>${r.score}勝 (${r.lands}領)</span></div>`;
+            });
             document.getElementById('result-overlay').style.display = 'flex';
         }
 
@@ -583,9 +580,10 @@
                     if (this.selectedIdx === i) div.classList.add('selected');
                     if (this.isSelectingLandForTrade && cell.ownerId === this.tradeContext.fromId) div.classList.add('trade-target');
                     if (cell.ownerId === activeId && !this.state.winner) div.classList.add('current-turn-glow');
-                    const owner = [...MAJORS, ...SUPERS, {id:'m', color:'#333'}, {id:'s', color:'#666'}].find(m => cell.ownerId.startsWith(m.id)) || {color:'#222'};
-                    div.style.background = owner.color || '#444';
-                    div.innerHTML = `<span>${MAJORS.find(m=>m.id===cell.ownerId)?.short || cell.short}</span>`;
+                    const currentOwner = MAJORS.find(m => m.id === cell.ownerId);
+                    const defaultColor = (cell.id.startsWith('m')) ? '#334155' : '#64748b';
+                    div.style.background = currentOwner ? currentOwner.color : defaultColor;
+                    div.innerHTML = `<span>${currentOwner ? currentOwner.short : cell.short}</span>`;
                     if (this.isAlly(activeId, cell.ownerId)) div.innerHTML += `<span class="ally-mark">🤝</span>`;
                     div.onclick = () => {
                         if (this.isSelectingLandForTrade) {
@@ -593,7 +591,7 @@
                                 this.isSelectingLandForTrade = false;
                                 if (this.isHost) this.applyAction(this.myCountryId, 'trade_land_picked', this.tradeContext.fromId, i);
                                 else this.conns[this.hostId].send({ type: 'action', actorId: this.myCountryId, actType: 'trade_land_picked', targetIdx: this.tradeContext.fromId, amount: i });
-                            } else alert("相手の領土を選んで！");
+                            } else alert("取引相手の領土を選んでください");
                             return;
                         }
                         this.selectedIdx = i; this.updateUI();
@@ -614,8 +612,8 @@
             const sb = document.getElementById('score-board'); sb.innerHTML = '';
             MAJORS.forEach(m => { sb.innerHTML += `<div class="score-row"><span>${m.name}</span> <span>${this.state.scores[m.id]}勝 (${this.state.maxLands[m.id]}領)</span></div>`; });
             document.getElementById('game-log').innerHTML = this.state.logs.slice().reverse().map(l => `<div>> ${l}</div>`).join('');
-            const chatBox = document.getElementById('chat-box'); chatBox.innerHTML = this.state.chatLogs.slice().map(l => `<div>${l}</div>`).join('');
-            chatBox.scrollTop = chatBox.scrollHeight;
+            document.getElementById('chat-box').innerHTML = this.state.chatLogs.slice().map(l => `<div>${l}</div>`).join('');
+            document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
             document.getElementById('turn-display').textContent = this.state.finalWinner ? `覇者:${this.state.finalWinner}` : (this.state.winner ? `勝者:${this.state.winner}` : `${MAJORS[this.state.turnIdx].name}の番`);
             const myMid = this.state.players[this.myPeerId || 'host'];
             document.getElementById('my-info').textContent = `担当：${MAJORS.find(m => m.id === myMid)?.name || '未選択'}`;
@@ -630,36 +628,35 @@
 
     const game = new GameCore();
     function hostRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
+        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("名前入力");
         game.isHost = true; game.peer = new Peer(rId, peerConfig);
-        game.peer.on('open', (id) => {
-            game.myPeerId = id; document.getElementById('room-display').textContent = "部屋ID：" + id;
+        game.peer.on('open', id => {
+            game.myPeerId = id; document.getElementById('room-display').textContent = "部屋：" + id;
             document.getElementById('lobby-setup').style.display = 'none'; document.getElementById('lobby-wait').style.display = 'block';
-            document.getElementById('start-btn').style.display = 'block';
         });
-        game.peer.on('connection', (conn) => {
+        game.peer.on('connection', conn => {
             game.conns[conn.peer] = conn;
-            conn.on('data', (d) => {
+            conn.on('data', d => {
                 if (d.type === 'select_country') { game.state.players[d.peerId] = d.countryId; game.broadcast(); game.checkAllReady(); }
                 if (d.type === 'action') game.applyAction(d.actorId, d.actType, d.targetIdx, d.amount);
                 if (d.type === 'alliance_answer') game.applyAction(d.fromId, d.agreed ? 'alliance_ok' : 'alliance_ng', d.toId, 0);
                 if (d.type === 'chat') { game.addChat(d.msg); game.broadcast(); }
             });
         });
-        game.peer.on('error', (err) => { alert("通信エラー: " + err.type); });
+        game.peer.on('error', err => alert("通信エラー: " + err.type));
     }
     function joinRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
+        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("名前入力");
         game.isHost = false; game.hostId = rId; game.peer = new Peer(peerConfig);
-        game.peer.on('open', (id) => {
+        game.peer.on('open', id => {
             game.myPeerId = id; const conn = game.peer.connect(rId); game.conns[rId] = conn;
-            conn.on('data', (d) => {
+            conn.on('data', d => {
                 if (d.type === 'sync') { game.state = d.state; game.updateUI(); if(document.getElementById('selection-panel').style.display === 'block') game.renderCountryList(); }
                 if (d.type === 'modal_request') game.showModal(d.modalType, d.fromId, d.amount, d.cellIdx);
             });
             document.getElementById('lobby-setup').style.display = 'none';
         });
-        game.peer.on('error', (err) => { alert("接続失敗: " + err.type); });
+        game.peer.on('error', err => alert("接続失敗: " + err.type));
     }
 </script>
 </body>
