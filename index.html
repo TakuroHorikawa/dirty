@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WORLD WAR SUPREMACY: FINAL SUPREMACY</title>
+    <title>WORLD WAR SUPREMACY: GLOBAL CONNECT</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -49,7 +49,7 @@
         @keyframes glow { from { box-shadow: 0 0 2px #fff; } to { box-shadow: 0 0 15px var(--accent); } }
 
         .rank-item { padding: 15px; margin: 10px 0; border-radius: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .rank-1 { background: linear-gradient(45deg, #d4af37, #f1c40f); color: #000; font-size: 1.2rem; }
+        .rank-1 { background: linear-gradient(45deg, #d4af37, #f1c40f); color: #000; font-size: 1.1rem; }
         .rank-2 { background: var(--silver); color: #000; }
         .rank-3 { background: var(--bronze); color: #000; }
         #alliance-timer { font-size: 2rem; color: var(--danger); font-weight: bold; margin: 10px 0; }
@@ -62,20 +62,21 @@
         <div class="box">
             <h2 style="margin:0; letter-spacing: 2px;">WORLD WAR SUPREMACY</h2>
             <div id="lobby-setup">
-                <input type="text" id="room-id" placeholder="部屋名を入力">
+                <input type="text" id="room-id" placeholder="部屋名を入力（英数字）">
                 <button onclick="hostRoom()">部屋を作る</button>
                 <button onclick="joinRoom()" style="background:#333">参加する</button>
+                <p style="font-size:10px; color:#777; margin-top:5px;">※異なる回線でも接続できるようSTUNサーバーを使用します</p>
             </div>
             <div id="lobby-wait" style="display:none">
                 <p id="room-display" style="color:var(--accent); font-weight:bold;"></p>
                 <div id="player-list" style="text-align:left; font-size:13px; margin-bottom:15px"></div>
                 <button id="start-btn" onclick="game.start()" style="display:none; background:var(--success)">ゲーム開始 (AI補充)</button>
-                <small id="wait-msg">接続待機中...</small>
+                <small id="wait-msg">通信環境を確認しています...</small>
             </div>
         </div>
     </div>
 
-    <!-- リザルト画面 -->
+    <!-- リザルト -->
     <div id="result-overlay" style="display:none">
         <div class="box">
             <h1 style="color:var(--gold); margin-top:0;">最終結果発表</h1>
@@ -84,10 +85,10 @@
         </div>
     </div>
 
-    <!-- 同盟承認モーダル -->
+    <!-- 同盟承認 -->
     <div id="alliance-modal" style="display:none">
         <div class="box">
-            <h2 id="alliance-request-text">申請が届きました</h2>
+            <h2 id="alliance-request-text">同盟申請</h2>
             <div id="alliance-timer">10</div>
             <div style="display:flex; gap:10px;">
                 <button onclick="game.answerAlliance(true)" style="background:var(--success); flex:1;">承認</button>
@@ -96,7 +97,7 @@
         </div>
     </div>
 
-    <!-- サイドバーUI -->
+    <!-- UI -->
     <div id="sidebar">
         <div class="info-card">
             <h3 id="turn-display" style="color:var(--accent); margin:0">準備中</h3>
@@ -119,7 +120,7 @@
 
         <div class="info-card" id="actions" style="display:none">
             <div class="flex-row">
-                <span style="font-size:11px;">設定量:</span>
+                <span style="font-size:11px;">軍設定:</span>
                 <input type="number" id="act-amount" value="20" min="10" step="10">
             </div>
             <div class="action-grid" id="normal-actions">
@@ -149,6 +150,17 @@
     </div>
 
 <script>
+    // NAT越えのためのSTUNサーバー設定
+    const peerConfig = {
+        config: {
+            'iceServers': [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' }
+            ]
+        }
+    };
+
     const MAJORS = [
         { id: 'ni', name: '日本', short: '日本', color: '#8b0000', power: 10, cash: 30 },
         { id: 'de', name: 'ドイツ', short: 'ドイ', color: '#00008b', power: 10, cash: 30 },
@@ -156,7 +168,6 @@
         { id: 'fr', name: 'フランス', short: 'フラ', color: '#b8860b', power: 10, cash: 30 },
         { id: 'ca', name: 'カナダ', short: 'カナ', color: '#4b0082', power: 10, cash: 30 }
     ];
-    // 修正：大国ステータス変更 (300/900)
     const SUPERS = [
         { id: 'us', name: 'アメリカ', short: 'アメ', color: '#000', power: 300, cash: 900 },
         { id: 'ru', name: 'ロシア', short: 'ロシ', color: '#000', power: 300, cash: 900 },
@@ -177,8 +188,8 @@
             this.state = { 
                 grid: [], turnIdx: 0, players: {}, taxUsed: {}, alliances: [], isStarted: false, winner: null, 
                 scores: { ni: 0, de: 0, uk: 0, fr: 0, ca: 0 }, 
-                maxLands: { ni: 0, de: 0, uk: 0, fr: 0, ca: 0 }, // 最大領土数記録
-                warCooldown: { ni: 0, de: 0, uk: 0, fr: 0, ca: 0 }, // AI戦争クールダウン
+                maxLands: { ni: 0, de: 0, uk: 0, fr: 0, ca: 0 },
+                warCooldown: { ni: 0, de: 0, uk: 0, fr: 0, ca: 0 },
                 round: 1, finalWinner: null, logs: [] 
             };
         }
@@ -190,10 +201,7 @@
             const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } };
             do { shuffle(all); } while (!this.checkMap(all));
             this.state.grid = all.map((c, i) => ({ ...c, ownerId: c.id, pos: i, power: c.power, cash: c.cash }));
-            MAJORS.forEach(m => {
-                this.state.taxUsed[m.id] = 0;
-                this.state.warCooldown[m.id] = 0;
-            });
+            MAJORS.forEach(m => { this.state.taxUsed[m.id] = 0; this.state.warCooldown[m.id] = 0; });
             this.state.alliances = []; this.state.winner = null; this.state.turnIdx = 0; this.selectedIdx = null;
         }
 
@@ -210,12 +218,11 @@
             return true;
         }
 
-        start() { if (this.isHost) { this.initMap(); this.state.isStarted = true; this.addLog(`【対戦開始】日本の手番から。`); this.broadcast(); } }
+        start() { if (this.isHost) { this.initMap(); this.state.isStarted = true; this.addLog(`【第1ラウンド】日本の手番から。`); this.broadcast(); } }
         nextRound() { if (this.isHost) { this.state.round++; this.initMap(); this.addLog(`【第 ${this.state.round} ラウンド】開始。`); this.broadcast(); } }
 
         broadcast() {
             if (!this.isHost || !this.state.isStarted) return;
-            // 放送前に最大領土数をリアルタイム更新
             MAJORS.forEach(m => {
                 const count = this.state.grid.filter(c => c.ownerId === m.id).length;
                 if (count > this.state.maxLands[m.id]) this.state.maxLands[m.id] = count;
@@ -250,25 +257,22 @@
                 case 'war':
                     if (targetIdx === null) break;
                     const targetCell = this.state.grid[targetIdx];
-                    if (targetCell.ownerId === actorId || this.isAlly(actorId, targetCell.ownerId)) { logMsg = "攻撃不可能です。"; break; }
+                    if (targetCell.ownerId === actorId || this.isAlly(actorId, targetCell.ownerId)) { logMsg = "侵攻不能。"; break; }
                     const isAdj = myCells.some(mc => Math.abs((mc.pos % 9)-(targetCell.pos % 9)) + Math.abs(Math.floor(mc.pos / 9)-Math.floor(targetCell.pos / 9)) === 1);
                     if (!isAdj) break;
-
-                    const targetOwnerId = targetCell.ownerId;
-                    const isMajorTarget = MAJORS.some(m => m.id === targetOwnerId);
                     
-                    // 総力戦判定
-                    const enemyPower = isMajorTarget ? this.getMajorBaseCell(targetOwnerId).power : targetCell.power;
-
+                    const isMajor = MAJORS.some(m => m.id === targetCell.ownerId);
+                    const enemyPower = isMajor ? this.getMajorBaseCell(targetCell.ownerId).power : targetCell.power;
+                    
                     if (actorBase.power > enemyPower) {
                         actorBase.power -= enemyPower;
-                        const enemyBase = isMajorTarget ? this.getMajorBaseCell(targetOwnerId) : targetCell;
+                        const enemyBase = isMajor ? this.getMajorBaseCell(targetCell.ownerId) : targetCell;
                         const enemyCash = enemyBase.cash;
                         actorBase.cash += enemyCash;
 
-                        if (isMajorTarget) {
+                        if (isMajor) {
                             logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を滅亡させ全土併合！`;
-                            // 修正：すべての相手領土を自分のものにする
+                            const targetOwnerId = targetCell.ownerId;
                             this.state.grid.forEach(c => { if(c.ownerId === targetOwnerId) c.ownerId = actorId; });
                             enemyBase.power = 0; enemyBase.cash = 0;
                         } else {
@@ -276,14 +280,11 @@
                             targetCell.ownerId = actorId;
                         }
                         
-                        // AIの場合はクールダウンをセット (1戦につき3ターン休み)
-                        if (!Object.values(this.state.players).includes(actorId)) {
-                            this.state.warCooldown[actorId] = 3;
-                        }
+                        // AIの場合、クールダウンをセット (3ターン休み)
+                        if (!Object.values(this.state.players).includes(actorId)) { this.state.warCooldown[actorId] = 3; }
                         this.checkRoundVictory();
                     } else { logMsg = `${actorBase.name}の侵攻は失敗。`; }
                     break;
-
                 case 'tax':
                     if (this.state.taxUsed[actorId] < 5) {
                         const gain = myCells.length * 20; actorBase.cash += gain; this.state.taxUsed[actorId]++;
@@ -294,8 +295,7 @@
                     const maxP = Math.floor(actorBase.cash / 2);
                     if (maxP > 0) { actorBase.cash -= maxP * 2; actorBase.power += maxP; logMsg = `${actorBase.name}が限界軍拡。`; }
                     break;
-                case 'minus_max': if (actorBase.power > 0) { actorBase.cash += actorBase.power * 2; actorBase.power = 0; logMsg = `${actorBase.name}が全戦力換金。`; } break;
-                
+                case 'minus_max': if (actorBase.power > 0) { actorBase.cash += actorBase.power * 2; actorBase.power = 0; logMsg = `${actorBase.name}が全軍縮小。`; } break;
                 case 'alliance':
                     if (targetIdx === null) break;
                     const tid = this.state.grid[targetIdx].ownerId;
@@ -310,28 +310,26 @@
                             logMsg = `🤝 ${actorBase.name}と${MAJORS.find(m=>m.id===tid).name}が同盟。`;
                         }
                     } break;
-
                 case 'alliance_ok':
                     this.state.alliances.push([actorId, targetIdx]);
                     this.addLog(`🤝 ${actorBase.name}と${MAJORS.find(m=>m.id===targetIdx).name}が同盟締結！`);
                     this.nextTurn(); return;
-                case 'alliance_ng': this.addLog(`💔 同盟申請は拒否。`); this.nextTurn(); return;
-
+                case 'alliance_ng': this.addLog(`💔 同盟申請は拒絶。`); this.nextTurn(); return;
                 case 'break_alliance':
                     if (targetIdx === null) break;
                     const b_tid = this.state.grid[targetIdx].ownerId;
                     if (this.isAlly(actorId, b_tid)) {
                         this.state.alliances = this.state.alliances.filter(p => !(p.includes(actorId) && p.includes(b_tid)));
-                        logMsg = `⚠️ ${actorBase.name}が同盟を一方的に破棄！`;
+                        logMsg = `⚠️ ${actorBase.name}が同盟を破棄！`;
                     } break;
                 case 'requestAid':
                     if (targetIdx === null) break;
                     const aidPid = this.state.grid[targetIdx].ownerId;
                     if (this.isAlly(actorId, aidPid)) {
                         const pb = this.getMajorBaseCell(aidPid);
-                        if (pb.cash >= 20) { pb.cash -= 20; actorBase.cash += 20; pb.power -= 5; actorBase.power += 5; logMsg = `${actorBase.name}が援助を受けた。`; }
+                        if (pb.cash >= 20) { pb.cash -= 20; actorBase.cash += 20; pb.power -= 5; actorBase.power += 5; logMsg = `${actorBase.name}が支援を受けた。`; }
                     } break;
-                case 'end': logMsg = `${actorBase.name}が待機。`; break;
+                case 'end': logMsg = `${actorBase.name}は戦力を維持。`; break;
             }
             if (logMsg) this.addLog(logMsg);
             this.nextTurn();
@@ -360,10 +358,8 @@
             const actorBase = this.getMajorBaseCell(id);
             const myCells = this.state.grid.filter(c => c.ownerId === id);
 
-            // クールダウンチェック (戦争制限)
-            if (this.state.warCooldown[id] > 0) {
-                this.state.warCooldown[id]--;
-            } else {
+            if (this.state.warCooldown[id] > 0) { this.state.warCooldown[id]--; } 
+            else {
                 let bestT = null; let minP = Infinity; let hasEnemy = false;
                 myCells.forEach(mc => {
                     const x = mc.pos % 9, y = Math.floor(mc.pos / 9);
@@ -381,8 +377,6 @@
                     });
                 });
                 if (bestT !== null) return this.applyAction(id, 'war', bestT, 0);
-
-                // 裏切り判定 (敵がいなくなった場合など)
                 if (!hasEnemy) {
                     let weakAlly = null;
                     myCells.forEach(mc => {
@@ -401,8 +395,6 @@
                     if (weakAlly !== null) return this.applyAction(id, 'break_alliance', weakAlly, 0);
                 }
             }
-
-            // 内政アクション
             if (actorBase.cash >= 20) return this.applyAction(id, 'plus_max', null, 0);
             if (this.state.taxUsed[id] < 5) return this.applyAction(id, 'tax', null, 0);
             this.applyAction(id, 'end', null, 0);
@@ -418,10 +410,9 @@
         }
 
         showFinalResult() {
-            const ranking = MAJORS.map(m => {
-                return { name: m.name, score: this.state.scores[m.id], lands: this.state.maxLands[m.id], power: this.getMajorBaseCell(m.id).power };
-            }).sort((a, b) => b.score - a.score || b.lands - a.lands || b.power - a.power);
-
+            const ranking = MAJORS.map(m => ({
+                name: m.name, score: this.state.scores[m.id], lands: this.state.maxLands[m.id], power: this.getMajorBaseCell(m.id).power
+            })).sort((a, b) => b.score - a.score || b.lands - a.lands || b.power - a.power);
             const list = document.getElementById('ranking-list'); list.innerHTML = "";
             ranking.slice(0, 3).forEach((r, i) => {
                 const item = document.createElement('div'); item.className = `rank-item rank-${i+1}`;
@@ -445,9 +436,10 @@
                 const div = document.createElement('div'); div.className = 'cell';
                 if (this.selectedIdx === i) div.classList.add('selected');
                 if (cell.ownerId === activeId && !this.state.winner) div.classList.add('current-turn-glow');
-                const owner = [...MAJORS, ...SUPERS, {id:'m', color:'#333'}, {id:'s', color:'#666'}].find(m => cell.ownerId.startsWith(m.id)) || {color:'#222'};
-                div.style.background = owner.color || '#444';
-                div.innerHTML = `<span>${MAJORS.find(m=>m.id===cell.ownerId)?.short || cell.short}</span>`;
+                const currentOwner = MAJORS.find(m => m.id === cell.ownerId);
+                const colorInfo = [...MAJORS, ...SUPERS, {id:'m', color:'#333'}, {id:'s', color:'#666'}].find(m => cell.ownerId.startsWith(m.id)) || {color:'#222'};
+                div.style.background = colorInfo.color || '#444';
+                div.innerHTML = `<span>${currentOwner ? currentOwner.short : cell.short}</span>`;
                 if (this.isAlly(activeId, cell.ownerId)) div.innerHTML += `<span class="ally-mark">🤝</span>`;
                 div.onclick = () => { this.selectedIdx = i; this.updateUI(); };
                 gridEl.appendChild(div);
@@ -465,7 +457,7 @@
             const sb = document.getElementById('score-board'); sb.innerHTML = '';
             MAJORS.forEach(m => { sb.innerHTML += `<div class="score-row"><span>${m.name}</span> <span>${this.state.scores[m.id]} 勝</span></div>`; });
             const display = document.getElementById('turn-display');
-            if (this.state.finalWinner) display.textContent = `覇者：${this.state.finalWinner}`;
+            if (this.state.finalWinner) display.textContent = `最終覇者：${this.state.finalWinner}`;
             else if (this.state.winner) display.textContent = `勝者：${this.state.winner}`;
             else display.textContent = `${MAJORS[this.state.turnIdx].name}の番`;
             const myMid = this.state.players[this.myPeerId];
@@ -482,7 +474,9 @@
 
     function hostRoom() {
         const roomId = document.getElementById('room-id').value.trim(); if (!roomId) return alert("部屋名入力");
-        game.isHost = true; game.peer = new Peer(roomId);
+        game.isHost = true;
+        // 修正：Peer初期化時にSTUNサーバーを適用
+        game.peer = new Peer(roomId, peerConfig);
         game.peer.on('open', (id) => {
             game.myPeerId = id; game.state.players[id] = MAJORS[0].id;
             document.getElementById('room-display').textContent = "部屋ID：" + id;
@@ -501,11 +495,14 @@
             });
             conn.on('close', () => { delete game.conns[conn.peer]; updateLobby(); });
         });
+        game.peer.on('error', (err) => { if (err.type === 'unavailable-id') alert("使用済みです。"); else console.error(err); });
     }
 
     function joinRoom() {
         const roomId = document.getElementById('room-id').value.trim(); if (!roomId) return alert("部屋名入力");
-        game.isHost = false; game.hostId = roomId; game.peer = new Peer();
+        game.isHost = false; game.hostId = roomId;
+        // 修正：Peer初期化時にSTUNサーバーを適用
+        game.peer = new Peer(peerConfig);
         game.peer.on('open', (id) => {
             game.myPeerId = id; const conn = game.peer.connect(roomId); game.conns[roomId] = conn;
             conn.on('data', (d) => {
@@ -519,12 +516,14 @@
             });
             document.getElementById('lobby-setup').style.display = 'none'; document.getElementById('lobby-wait').style.display = 'block';
         });
+        game.peer.on('error', (err) => { alert("通信エラーが発生しました。"); console.error(err); });
     }
 
     function updateLobby() {
         const list = document.getElementById('player-list'); list.innerHTML = '<strong>参戦プレイヤー:</strong>';
         Object.entries(game.state.players).forEach(([pid, mid]) => {
-            list.innerHTML += `<div>・${MAJORS.find(m => m.id === mid).name} (${pid === game.myPeerId ? 'あなた' : 'PL'})</div>`;
+            const name = MAJORS.find(m => m.id === mid).name;
+            list.innerHTML += `<div>・${name} (${pid === game.myPeerId ? 'あなた' : 'PL'})</div>`;
         });
     }
 </script>
