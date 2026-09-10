@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WORLD WAR SUPREMACY: GLOBAL 81 PENINSULA</title>
+    <title>WORLD WAR SUPREMACY: GLOBAL 81X</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         :root {
             --bg: #0a0a0c; --panel: #16161a; --border: #2a2a30; --text: #e0e0e6; --accent: #4f46e5;
-            --uk: #006400; --fr: #b8860b; --de: #00008b; --ni: #8b0000; --ca: #4b0082;
+            --ni: #8b0000; --de: #00008b; --uk: #006400; --fr: #b8860b; --ca: #4b0082;
             --danger: #e74c3c; --gold: #f1c40f; --silver: #bdc3c7; --bronze: #cd7f32; --success: #2ecc71;
             --map-bg: #111827;
         }
@@ -17,11 +17,11 @@
         @media (min-width: 1000px) {
             body { flex-direction: row; }
             #sidebar { width: 340px; height: 100vh; position: sticky; top: 0; overflow-y: auto; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-            #main { flex: 1; padding: 20px; background: #000; overflow-y: auto; }
+            #main { flex: 1; padding: 20px; background: #000; overflow-x: auto; overflow-y: auto; }
         }
         @media (max-width: 999px) {
             #sidebar { width: 100%; border-bottom: 1px solid var(--border); padding: 10px; box-sizing: border-box; }
-            #main { width: 100%; padding: 10px; box-sizing: border-box; }
+            #main { width: 100%; padding: 10px; box-sizing: border-box; overflow-x: auto; }
         }
 
         /* Lobby & Modals */
@@ -38,17 +38,17 @@
         button.primary-btn { background: var(--accent); color: white; padding: 12px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; width:100%; }
 
         /* Grid - 12 columns x 8 rows (Total 96) */
-        #grid-container { background: var(--map-bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border); margin: 0 auto; width: fit-content; }
-        #grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; width: 100%; max-width: 1100px; aspect-ratio: 12 / 8; }
-        .cell { aspect-ratio: 1; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: clamp(7px, 1.1vw, 10px); font-weight: bold; cursor: pointer; transition: 0.1s; position: relative; border: 1px solid rgba(255,255,255,0.05); }
-        .cell.sea { visibility: hidden; pointer-events: none; }
+        #grid-container { background: var(--map-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin: 0 auto; width: fit-content; min-width: min-content; }
+        #grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; width: 1100px; max-width: 1200px; aspect-ratio: 12 / 8; }
+        .cell { aspect-ratio: 1; border-radius: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: clamp(8px, 1vw, 11px); font-weight: bold; cursor: pointer; transition: 0.1s; position: relative; border: 1px solid rgba(255,255,255,0.05); min-width: 45px; min-height: 45px; }
+        .cell.sea { visibility: hidden; pointer-events: none; border: none; }
         .cell:not(.sea):hover { border-color: #fff; z-index: 5; transform: scale(1.05); }
         .cell.selected { border: 2px solid #fff; box-shadow: 0 0 15px var(--accent); z-index: 10; }
         .cell.trade-target { border: 2px solid var(--gold); animation: flash 1s infinite; }
         @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .ally-mark { position: absolute; top: 1px; right: 1px; font-size: 9px; }
 
-        /* Logs vs Chat */
+        /* Separate Box for logs and chats */
         .scroll-box { overflow-y: auto; background: #000; padding: 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 11px; margin-bottom: 8px; }
         #game-log { height: 130px; border-left: 3px solid var(--accent); }
         #chat-box { height: 110px; color: #a5b4fc; border-left: 3px solid var(--success); }
@@ -68,7 +68,7 @@
     <!-- ロビー -->
     <div id="lobby">
         <div class="box">
-            <h2 style="margin:0; letter-spacing: 2px; color:var(--accent);">WORLD WAR SUPREMACY: 81P</h2>
+            <h2 style="margin:0; letter-spacing: 2px; color:var(--accent);">WORLD WAR SUPREMACY</h2>
             <div id="lobby-setup">
                 <button class="primary-btn" onclick="game.setLobbyMode('solo')" style="margin-bottom:10px;">一人でやる (AI対戦)</button>
                 <button class="primary-btn" onclick="game.setLobbyMode('team')" style="background:var(--success)">チームでやる (マルチプレイ)</button>
@@ -81,7 +81,7 @@
             <div id="lobby-wait" style="display:none">
                 <p id="room-display" style="color:var(--accent); font-weight:bold;"></p>
                 <div id="player-list" style="text-align:left; font-size:12px; margin-bottom:15px; opacity:0.8;"></div>
-                <button id="start-btn" class="primary-btn" onclick="game.initAndShowMap()" style="display:none; background:var(--success)">マップを生成して国を選ぶ</button>
+                <button id="start-btn" class="primary-btn" onclick="game.initAndShowMap()" style="display:none; background:var(--success)">世界を公開して国を選ぶ</button>
                 <small id="wait-msg">接続待機中...</small>
             </div>
         </div>
@@ -90,9 +90,9 @@
     <!-- 国選択 -->
     <div id="country-selection" style="display:none">
         <div class="box" style="max-width:550px;">
-            <h3>盤面を確認して担当国を選択</h3>
+            <h3>盤面を確認し、担当する国を選択</h3>
             <div id="country-list" style="display:flex; flex-wrap:wrap; justify-content:center; margin-bottom:15px;"></div>
-            <button id="confirm-country-btn" class="primary-btn" disabled onclick="game.confirmCountrySelection()">この国で参戦</button>
+            <button id="confirm-country-btn" class="primary-btn" disabled onclick="game.confirmCountrySelection()">この国で参戦（早い者勝ち）</button>
         </div>
     </div>
 
@@ -112,7 +112,7 @@
             <div id="modal-timer" style="font-size:2rem; color:var(--danger); font-weight:bold;">20</div>
             <div id="modal-options" style="display:flex; gap:10px; margin-top:15px;">
                 <button id="modal-yes" class="primary-btn" style="background:var(--success); flex:1;">承認</button>
-                <button id="modal-no" class="primary-btn" style="background:var(--danger); flex:1;">拒否</button>
+                <button id="modal-no" class="primary-btn" style="background:var(--danger); flex:1;">拒絶</button>
             </div>
         </div>
     </div>
@@ -124,9 +124,7 @@
             <p id="my-info" style="font-size:11px; margin:5px 0 0; opacity:0.7"></p>
         </div>
 
-        <div class="info-card">
-            <div id="score-board"></div>
-        </div>
+        <div class="info-card"><div id="score-board"></div></div>
 
         <div class="info-card" id="detail-panel">
             <div id="det-name" style="font-size: 0.9rem; font-weight: bold; color: var(--accent);">国を選択</div>
@@ -140,16 +138,16 @@
                 <input type="number" id="act-amount" value="20" min="10" step="10" style="margin:0; font-size:11px; height:30px;">
                 <button onclick="game.handleActionRequest('plus_max')" style="background:var(--success); margin:0; width:100px; height:30px; border:none; border-radius:6px; cursor:pointer; color:white; font-weight:bold;">軍拡(全額)</button>
             </div>
-            <div class="action-grid" id="normal-actions">
+            <div class="action-grid">
                 <button onclick="game.handleActionRequest('war')">戦争(総力戦)</button>
                 <button onclick="game.handleActionRequest('tax')" id="tax-btn">徴税</button>
                 <button onclick="game.handleActionRequest('alliance')">同盟申請</button>
                 <button onclick="game.handleActionRequest('trade')">交易申請</button>
-                <button class="break-btn" onclick="game.handleActionRequest('break_alliance')">同盟を破棄</button>
+                <button class="break-btn" onclick="game.handleActionRequest('break_alliance')">同盟破棄</button>
                 <button onclick="game.handleActionRequest('end')" style="background:#000">ターン終了</button>
             </div>
             <div id="host-round-actions" style="display:none; margin-top:5px;">
-                <button onclick="game.nextRound()" style="background:#4f46e5; width:100%; border:none; border-radius:6px; color:white; padding:10px; font-weight:bold; cursor:pointer;">次のラウンドへ</button>
+                <button onclick="game.nextRound()" style="background:#4f46e5; width:100%; border:none; border-radius:6px; color:white; padding:10px; font-weight:bold; cursor:pointer;">次ラウンドを開始</button>
             </div>
         </div>
 
@@ -170,6 +168,7 @@
     </div>
 
 <script>
+    // 通信設定（冗長STUN/TURN）
     const peerConfig = {
         config: {
             'iceServers': [
@@ -186,7 +185,7 @@
         { id: 'uk', name: 'イギリス', short: '英国', color: '#006400', power: 10, cash: 30 },
         { id: 'fr', name: 'フランス', short: '仏国', color: '#b8860b', power: 10, cash: 30 },
         { id: 'de', name: 'ドイツ', short: '独国', color: '#00008b', power: 10, cash: 30 },
-        { id: 'jp', name: '日本', short: '日本', color: '#8b0000', power: 10, cash: 30 },
+        { id: 'ni', name: '日本', short: '日本', color: '#8b0000', power: 10, cash: 30 },
         { id: 'ca', name: 'カナダ', short: '加国', color: '#4b0082', power: 10, cash: 30 }
     ];
     const SUPERS = [
@@ -212,9 +211,9 @@
         resetData() {
             this.state = { 
                 grid: [], turnIdx: 0, players: {}, taxUsed: {}, alliances: [], isStarted: false, winner: null, 
-                scores: { uk: 0, fr: 0, de: 0, jp: 0, ca: 0 }, 
-                maxLands: { uk: 0, fr: 0, de: 0, jp: 0, ca: 0 },
-                warCooldown: { uk: 0, fr: 0, de: 0, jp: 0, ca: 0 },
+                scores: { uk: 0, fr: 0, de: 0, ni: 0, ca: 0 }, 
+                maxLands: { uk: 0, fr: 0, de: 0, ni: 0, ca: 0 },
+                warCooldown: { uk: 0, fr: 0, de: 0, ni: 0, ca: 0 },
                 round: 1, finalWinner: null, logs: [], chatLogs: [],
                 countrySelectionDone: false
             };
@@ -237,20 +236,14 @@
         }
 
         renderCountryList() {
-            const list = document.getElementById('country-list');
-            list.innerHTML = '';
+            const list = document.getElementById('country-list'); list.innerHTML = '';
             MAJORS.forEach(m => {
                 const takenPeer = Object.keys(this.state.players).find(p => this.state.players[p] === m.id);
                 const btn = document.createElement('div');
                 btn.className = 'country-btn' + (takenPeer ? ' taken' : '') + (this.myCountryId === m.id ? ' active' : '');
-                btn.style.background = m.color;
-                btn.textContent = m.name + (takenPeer ? " (済)" : "");
+                btn.style.background = m.color; btn.textContent = m.name + (takenPeer ? " (済)" : "");
                 if (!takenPeer) {
-                    btn.onclick = () => {
-                        this.myCountryId = m.id;
-                        document.getElementById('confirm-country-btn').disabled = false;
-                        this.renderCountryList();
-                    };
+                    btn.onclick = () => { this.myCountryId = m.id; document.getElementById('confirm-country-btn').disabled = false; this.renderCountryList(); };
                 }
                 list.appendChild(btn);
             });
@@ -258,50 +251,44 @@
 
         confirmCountrySelection() {
             const pId = this.myPeerId || 'host';
-            if (this.isHost) {
-                this.state.players[pId] = this.myCountryId;
-                this.checkAllPlayersReady();
-            } else {
-                this.conns[this.hostId].send({ type: 'select_country', peerId: pId, countryId: this.myCountryId });
-            }
+            if (this.isHost) { this.state.players[pId] = this.myCountryId; this.checkAllReady(); }
+            else { this.conns[this.hostId].send({ type: 'select_country', peerId: pId, countryId: this.myCountryId }); }
             document.getElementById('country-selection').style.display = 'none';
         }
 
-        checkAllPlayersReady() {
+        checkAllReady() {
             if (!this.isHost) return;
             if (Object.values(this.state.players).length >= Object.keys(this.conns).length + 1) {
                 this.state.countrySelectionDone = true;
-                this.addLog("全プレイヤー準備完了。開戦！");
+                this.addLog("全軍配備完了。第1ラウンド、日本の手番。");
                 this.broadcast();
             } else { this.broadcast(); }
         }
 
         initMap() {
-            const allCountries = [...MAJORS, ...SUPERS, ...MIDDLES, ...SMALLS]; // 81 nations
+            const allCountries = [...MAJORS, ...SUPERS, ...MIDDLES, ...SMALLS]; // 81
             const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } };
             shuffle(allCountries);
 
             this.state.grid = Array(96).fill(null).map((_, i) => {
                 const x = i % 12, y = Math.floor(i / 12);
-                // Mainland: X 0-8 (72), Peninsula: X 9-11 Y 5-7 (9) -> Total 81
-                const isMainland = (x <= 8);
-                const isPeninsula = (x >= 9 && y >= 5);
-                if (isMainland || isPeninsula) {
+                const isMainland = (x <= 7);
+                const isIsland = (x >= 9 && x <= 11 && y <= 2);
+                const isPeninsula = (x >= 8 && x <= 9 && y >= 4);
+                if (isMainland || isIsland || isPeninsula) {
                     const c = allCountries.pop();
                     return { ...c, ownerId: c.id, pos: i, power: c.power, cash: c.cash };
                 } else {
                     return { isSea: true, pos: i };
                 }
             });
-
             MAJORS.forEach(m => { this.state.taxUsed[m.id] = 0; this.state.warCooldown[m.id] = 0; });
-            this.state.alliances = []; this.state.winner = null; this.state.turnIdx = 0; this.selectedIdx = null;
+            this.state.turnIdx = 0; this.state.winner = null; this.state.alliances = [];
         }
 
         nextRound() {
             if (!this.isHost) return;
-            this.state.round++;
-            this.initMap(); // Includes turnIdx = 0 reset
+            this.state.round++; this.initMap();
             this.addLog(`第 ${this.state.round} ラウンド開始。`);
             this.broadcast();
         }
@@ -321,8 +308,7 @@
 
         sendChat() {
             const input = document.getElementById('chat-input');
-            const txt = input.value.trim();
-            if (!txt) return;
+            const txt = input.value.trim(); if (!txt) return;
             const sender = MAJORS.find(m => m.id === this.myCountryId)?.name || '??';
             if (this.isHost) { this.addChat(`${sender}: ${txt}`); this.broadcast(); }
             else { this.conns[this.hostId].send({ type: 'chat', msg: `${sender}: ${txt}` }); }
@@ -342,7 +328,6 @@
                 else this.conns[this.hostId].send({ type: 'action', actorId: myId, actType: 'trade_req', targetIdx: this.selectedIdx, amount });
                 return;
             }
-
             if (this.isHost) this.applyAction(myId, type, this.selectedIdx, amount);
             else this.conns[this.hostId].send({ type: 'action', actorId: myId, actType: type, targetIdx: this.selectedIdx, amount });
         }
@@ -361,32 +346,26 @@
                     const targetCell = this.state.grid[targetIdx];
                     if (!targetCell || targetCell.isSea || targetCell.ownerId === actorId || this.isAlly(actorId, targetCell.ownerId)) break;
                     if (!this.isAdj(myCells.map(c => c.pos), targetIdx)) break;
-                    
                     const isMajor = MAJORS.some(m => m.id === targetCell.ownerId);
                     const enemyPower = isMajor ? this.getMajorBaseCell(targetCell.ownerId).power : targetCell.power;
-                    
                     if (actorBase.power > enemyPower) {
                         actorBase.power -= enemyPower;
                         const enemyBase = isMajor ? this.getMajorBaseCell(targetCell.ownerId) : targetCell;
                         actorBase.cash += enemyBase.cash;
                         if (isMajor) {
+                            logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を併合！`;
                             const targetOwnerId = targetCell.ownerId;
                             this.state.grid.forEach(c => { if(c && !c.isSea && c.ownerId === targetOwnerId) c.ownerId = actorId; });
                             enemyBase.power = 0; enemyBase.cash = 0;
-                            logMsg = `⚠️ ${actorBase.name}が${enemyBase.name}を滅亡させた！`;
-                        } else {
-                            logMsg = `${actorBase.name}が${targetCell.name}を制圧。`;
-                            targetCell.ownerId = actorId;
-                        }
+                        } else { logMsg = `${actorBase.name}が${targetCell.name}を制圧。`; targetCell.ownerId = actorId; }
                         if (!Object.values(this.state.players).includes(actorId)) this.state.warCooldown[actorId] = 3;
                         this.checkRoundVictory();
                     } else { logMsg = `${actorBase.name}の侵攻は失敗。`; }
                     break;
-
                 case 'tax':
                     if (this.state.taxUsed[actorId] < 5) {
                         const gain = myCells.length * 20; actorBase.cash += gain; this.state.taxUsed[actorId]++;
-                        logMsg = `${actorBase.name}が徴税(+${gain})`;
+                        logMsg = `${actorBase.name}が徴税を実施(+${gain})`;
                     } break;
                 case 'plus_max':
                     const pMax = Math.floor(actorBase.cash / 2);
@@ -398,14 +377,13 @@
                     if (MAJORS.some(m => m.id === tid) && tid !== actorId) {
                         const targetPeer = Object.keys(this.state.players).find(key => this.state.players[key] === tid);
                         if (targetPeer && targetPeer !== 'host') {
-                            this.conns[targetPeer].send({ type: 'modal_request', modalType: 'alliance', fromId: actorId });
-                            return; 
+                            this.conns[targetPeer].send({ type: 'modal_request', modalType: 'alliance', fromId: actorId }); return; 
                         } else { this.state.alliances.push([actorId, tid]); logMsg = `🤝 ${actorBase.name}と${MAJORS.find(m=>m.id===tid).name}が同盟。`; }
                     } break;
                 case 'trade_req':
-                    const tId1 = this.state.grid[targetIdx].ownerId;
-                    const tPeer1 = Object.keys(this.state.players).find(k => this.state.players[k] === tId1);
-                    if (tPeer1 && tPeer1 !== 'host') { this.conns[tPeer1].send({ type: 'modal_request', modalType: 'trade_1', fromId: actorId, amount }); return; }
+                    const targetOwnerId = this.state.grid[targetIdx].ownerId;
+                    const targetPeerTrade = Object.keys(this.state.players).find(k => this.state.players[k] === targetOwnerId);
+                    if (targetPeerTrade && targetPeerTrade !== 'host') { this.conns[targetPeerTrade].send({ type: 'modal_request', modalType: 'trade_1', fromId: actorId, amount }); return; }
                     break;
                 case 'trade_land_picked':
                     const tPeer2 = Object.keys(this.state.players).find(k => this.state.players[k] === actorId);
@@ -413,14 +391,14 @@
                     break;
                 case 'trade_final':
                     const aB = this.getMajorBaseCell(actorId); const bB = this.getMajorBaseCell(targetIdx); const tC = this.state.grid[amount];
-                    if (aB.cash >= targetIdx) { aB.cash -= targetIdx; bB.cash += targetIdx; tC.ownerId = bB.id; logMsg = `💰 交易成立：${aB.name}の領土を${bB.name}が取得。資金${targetIdx}が動いた。`; }
+                    if (aB.cash >= targetIdx) { aB.cash -= targetIdx; bB.cash += targetIdx; tC.ownerId = bB.id; logMsg = `💰 交易成立：${aB.name}の領土が${bB.name}へ譲渡。`; }
                     break;
                 case 'break_alliance':
                     if (targetIdx === null) break;
                     const b_tid = this.state.grid[targetIdx].ownerId;
                     if (this.isAlly(actorId, b_tid)) { this.state.alliances = this.state.alliances.filter(p => !(p.includes(actorId) && p.includes(b_tid))); logMsg = `⚠️ ${actorBase.name}が同盟を破棄。`; }
                     break;
-                case 'end': logMsg = `${actorBase.name}がターン終了。`; break;
+                case 'end': logMsg = `${actorBase.name}は戦力温存。`; break;
             }
             if (logMsg) this.addLog(logMsg);
             this.nextTurn();
@@ -431,24 +409,22 @@
             return myPosList.some(p => {
                 const mx = p % 12, my = Math.floor(p / 12);
                 if (Math.abs(mx - tx) + Math.abs(my - ty) === 1) return true;
-                // 本土(X=8)と半島(X=9)の境界判定 (Y 5~7)
-                if (mx === 8 && tx === 9 && my === ty && my >= 5) return true;
-                if (mx === 9 && tx === 8 && my === ty && my >= 5) return true;
+                // 海を越える橋 (本土 X=7 <-> 島 X=9) Y=0~2
+                if (mx === 7 && tx === 9 && my === ty && my <= 2) return true;
+                if (mx === 9 && tx === 7 && my === ty && my <= 2) return true;
                 return false;
             });
         }
 
         showModal(type, fromId, amount = 0, cellIdx = 0) {
             const modal = document.getElementById('generic-modal');
-            const text = document.getElementById('modal-text');
             const timerEl = document.getElementById('modal-timer');
             const fromName = MAJORS.find(m => m.id === fromId).name;
             modal.style.display = 'flex';
             let timeLeft = 20; timerEl.textContent = timeLeft;
-
-            if (type === 'alliance') text.textContent = `${fromName}から同盟申請`;
-            else if (type === 'trade_1') text.textContent = `${fromName}が資金${amount}を要求。対価として相手の領土を1つ奪いますか？`;
-            else if (type === 'trade_2') text.textContent = `${fromName}から提案：資金${amount}の対価に領土「${this.state.grid[cellIdx].name}」を渡しますか？`;
+            if (type === 'alliance') document.getElementById('modal-text').textContent = `${fromName}から同盟申請`;
+            else if (type === 'trade_1') document.getElementById('modal-text').textContent = `${fromName}が資金${amount}を要求。対価として相手の領土を1つ奪いますか？`;
+            else if (type === 'trade_2') document.getElementById('modal-text').textContent = `${fromName}から提案：資金${amount}と引き換えに領土「${this.state.grid[cellIdx].name}」を受け取りますか？`;
 
             this.modalTimer = setInterval(() => {
                 timeLeft--; timerEl.textContent = timeLeft;
@@ -467,7 +443,7 @@
                 else this.conns[this.hostId].send({ type: 'alliance_answer', fromId, toId: this.myCountryId, agreed });
             } else if (type === 'trade_1') {
                 if (agreed) { this.isSelectingLandForTrade = true; this.tradeContext = { fromId, amount }; alert("奪いたい相手の領土をクリックしてください"); this.updateUI(); }
-                else { if (this.isHost) { this.addLog("交易拒否"); this.nextTurn(); } else this.conns[this.hostId].send({ type: 'chat', msg: "[System] 交易拒否" }); }
+                else { if (this.isHost) { this.addLog("交易拒絶"); this.nextTurn(); } else this.conns[this.hostId].send({ type: 'chat', msg: "[Sys] 交易拒絶" }); }
             } else if (type === 'trade_2') {
                 if (agreed) {
                     if (this.isHost) this.applyAction(fromId, 'trade_final', this.myCountryId, cellIdx);
@@ -483,12 +459,19 @@
             const nextId = MAJORS[this.state.turnIdx].id;
             if (!this.state.grid.some(c => c && !c.isSea && c.ownerId === nextId)) return this.nextTurn();
             this.broadcast();
-            if (!Object.values(this.state.players).includes(nextId)) setTimeout(() => this.runAI(nextId), 600);
+            if (!Object.values(this.state.players).includes(nextId)) setTimeout(() => this.runAI(nextId), 1000);
         }
 
         runAI(id) {
+            if (!this.isHost) return;
+            // 変数初期化の安全ガード
+            if (!this.state.warCooldown) this.state.warCooldown = {};
+            if (this.state.warCooldown[id] === undefined) this.state.warCooldown[id] = 0;
+            
             const actorBase = this.getMajorBaseCell(id);
+            if (!actorBase) { this.nextTurn(); return; }
             const myCells = this.state.grid.filter(c => c && !c.isSea && c.ownerId === id);
+
             if (this.state.warCooldown[id] > 0) { this.state.warCooldown[id]--; } 
             else {
                 let bestT = null; let minP = Infinity;
@@ -517,18 +500,18 @@
             const alive = MAJORS.filter(m => this.state.grid.some(c => c && !c.isSea && c.ownerId === m.id));
             if (alive.length === 1) {
                 const win = alive[0]; this.state.winner = win.name; this.state.scores[win.id]++;
-                this.addLog(`【第 ${this.state.round} ラウンド】覇者：${win.name}`);
+                this.addLog(`第 ${this.state.round} ラウンド覇者：${win.name}`);
                 if (this.state.scores[win.id] >= 2) this.showFinalResult();
             }
         }
 
         showFinalResult() {
             const ranking = MAJORS.map(m => ({
-                name: m.name, score: this.state.scores[m.id], lands: this.state.maxLands[m.id], power: this.getMajorBaseCell(m.id)?.power || 0
-            })).sort((a, b) => b.score - a.score || b.lands - a.lands || b.power - a.power);
+                name: m.name, score: this.state.scores[m.id], lands: this.state.maxLands[m.id]
+            })).sort((a, b) => b.score - a.score || b.lands - a.lands);
             const list = document.getElementById('ranking-list'); list.innerHTML = "";
             ranking.slice(0, 3).forEach((r, i) => {
-                list.innerHTML += `<div class="rank-item rank-${i+1}"><span>${i+1}位: ${r.name}</span><span>${r.score}勝</span></div>`;
+                list.innerHTML += `<div class="rank-item rank-${i+1}"><span>${i+1}位: ${r.name}</span><span>${r.score}勝 (${r.lands}領)</span></div>`;
             });
             document.getElementById('result-overlay').style.display = 'flex';
         }
@@ -540,7 +523,6 @@
             if (!this.state || !this.state.isStarted) return;
             const gridEl = document.getElementById('grid'); gridEl.innerHTML = '';
             const activeId = MAJORS[this.state.turnIdx].id;
-
             this.state.grid.forEach((cell, i) => {
                 const div = document.createElement('div'); div.className = 'cell';
                 if (cell.isSea) div.classList.add('sea');
@@ -558,7 +540,7 @@
                                 this.isSelectingLandForTrade = false;
                                 if (this.isHost) this.applyAction(this.myCountryId, 'trade_land_picked', this.tradeContext.fromId, i);
                                 else this.conns[this.hostId].send({ type: 'action', actorId: this.myCountryId, actType: 'trade_land_picked', targetIdx: this.tradeContext.fromId, amount: i });
-                            } else alert("相手の領土を選んで！");
+                            } else alert("相手の領土を選択してください");
                             return;
                         }
                         this.selectedIdx = i; this.updateUI();
@@ -566,40 +548,34 @@
                 }
                 gridEl.appendChild(div);
             });
-
             if (this.selectedIdx !== null) {
                 const c = this.state.grid[this.selectedIdx]; 
                 if (c && !c.isSea) {
-                    const isM = MAJORS.some(m => m.id === c.ownerId);
-                    const st = isM ? this.getMajorBaseCell(c.ownerId) : c;
-                    const ownerName = isM ? st.name : "NPC";
-                    document.getElementById('det-name').textContent = (isM && c.id !== c.ownerId) ? `${ownerName}領 ${c.name}` : c.name;
+                    const stats = MAJORS.some(m => m.id === c.ownerId) ? this.getMajorBaseCell(c.ownerId) : c;
+                    const ownerName = MAJORS.find(m => m.id === c.ownerId)?.name || "NPC";
+                    document.getElementById('det-name').textContent = (c.id !== c.ownerId) ? `${ownerName}領 ${c.name}` : c.name;
                     document.getElementById('det-owner').textContent = ownerName;
-                    document.getElementById('det-power').textContent = st.power; document.getElementById('det-cash').textContent = st.cash;
+                    document.getElementById('det-power').textContent = stats.power; document.getElementById('det-cash').textContent = stats.cash;
                 }
             }
-
             const sb = document.getElementById('score-board'); sb.innerHTML = '';
             MAJORS.forEach(m => { sb.innerHTML += `<div class="score-row"><span>${m.name}</span> <span>${this.state.scores[m.id]}勝 (${this.state.maxLands[m.id]}領)</span></div>`; });
             const logBox = document.getElementById('game-log'); logBox.innerHTML = this.state.logs.slice().reverse().map(l => `<div>> ${l}</div>`).join('');
             const chatBox = document.getElementById('chat-box'); chatBox.innerHTML = this.state.chatLogs.slice().map(l => `<div>${l}</div>`).join('');
             chatBox.scrollTop = chatBox.scrollHeight;
-            
             document.getElementById('turn-display').textContent = this.state.finalWinner ? `覇者:${this.state.finalWinner}` : (this.state.winner ? `勝者:${this.state.winner}` : `${MAJORS[this.state.turnIdx].name}の番`);
             const myMid = this.state.players[this.myPeerId || 'host'];
             document.getElementById('my-info').textContent = `担当：${MAJORS.find(m => m.id === myMid)?.name || '未選択'}`;
-            
             if (this.state.countrySelectionDone) {
-                const canControl = this.canIMove() && !this.state.winner;
-                document.getElementById('actions').style.display = (canControl || (this.isHost && this.state.winner && !this.state.finalWinner)) ? 'block' : 'none';
+                const can = this.canIMove();
+                document.getElementById('actions').style.display = (can || (this.isHost && this.state.winner && !this.state.finalWinner)) ? 'block' : 'none';
                 document.getElementById('host-round-actions').style.display = (this.isHost && this.state.winner && !this.state.finalWinner) ? "block" : "none";
-                if (canControl) document.getElementById('tax-btn').textContent = `徴税(${5 - this.state.taxUsed[myMid]})`;
+                if (can) document.getElementById('tax-btn').textContent = `徴税(${5 - this.state.taxUsed[myMid]})`;
             }
         }
     }
 
     const game = new GameCore();
-
     function hostRoom() {
         const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
         game.isHost = true; game.peer = new Peer(rId, peerConfig);
@@ -611,15 +587,14 @@
         game.peer.on('connection', (conn) => {
             game.conns[conn.peer] = conn;
             conn.on('data', (d) => {
-                if (d.type === 'select_country') { game.state.players[d.peerId] = d.countryId; game.broadcast(); game.checkAllPlayersReady(); }
+                if (d.type === 'select_country') { game.state.players[d.peerId] = d.countryId; game.broadcast(); game.checkAllReady(); }
                 if (d.type === 'action') game.applyAction(d.actorId, d.actType, d.targetIdx, d.amount);
                 if (d.type === 'alliance_answer') game.applyAction(d.fromId, d.agreed ? 'alliance_ok' : 'alliance_ng', d.toId, 0);
                 if (d.type === 'chat') { game.addChat(d.msg); game.broadcast(); }
             });
         });
-        game.peer.on('error', (err) => { document.getElementById('wait-msg').textContent = "通信エラー: " + err.type; });
+        game.peer.on('error', (err) => { document.getElementById('wait-msg').textContent = "エラー: " + err.type; });
     }
-
     function joinRoom() {
         const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("部屋名入力");
         game.isHost = false; game.hostId = rId; game.peer = new Peer(peerConfig);
@@ -631,7 +606,7 @@
             });
             document.getElementById('lobby-setup').style.display = 'none';
         });
-        game.peer.on('error', (err) => { document.getElementById('wait-msg').textContent = "接続エラー: " + err.type; });
+        game.peer.on('error', (err) => { document.getElementById('wait-msg').textContent = "接続失敗: " + err.type; });
     }
 </script>
 </body>
