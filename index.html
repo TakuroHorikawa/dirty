@@ -1,695 +1,1400 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>World War III</title>
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-    <style>
-        :root {
-            /* デザイン設定：スレートグレー背景 / 落ち着いた海 / 主要国固有色 */
-            --bg-main: #374151;
-            --panel-bg: #1f2937;
-            --border-color: #4b5563;
-            --text-main: #f8fafc;
-            --uk: #006400; --fr: #b8860b; --de: #00008b; --ni: #8b0000; --ca: #4b0082;
-            --super-bg: #000000;
-            --mid-bg: #334155; --small-bg: #64748b;
-            --danger: #ef4444; --gold: #f1c40f; --silver: #94a3b8; --bronze: #cd7f32; --success: #22c55e; --accent: #6366f1;
-            --map-sea: #1e293b; 
-            --btn-action: #4b5563;
-        }
-
-        body { 
-            margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; 
-            background: var(--bg-main); color: var(--text-main);
-            display: flex; flex-direction: column; min-height: 100vh; overflow: hidden; 
-        }
-        
-        @media (min-width: 1000px) {
-            body { flex-direction: row; }
-            #sidebar { width: 360px; height: 100vh; position: sticky; top: 0; border-right: 1px solid var(--border-color); background: var(--panel-bg); display: flex; flex-direction: column; padding: 15px; box-sizing: border-box; overflow-y: auto; }
-            #main { flex: 1; padding: 20px; background: var(--bg-main); display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
-        }
-
-        @media (max-width: 999px) {
-            #sidebar { width: 100%; border-bottom: 1px solid var(--border-color); padding: 10px; background: var(--panel-bg); box-sizing: border-box; overflow-y: auto; max-height: 50vh; }
-            #main { width: 100%; padding: 10px; box-sizing: border-box; overflow-x: auto; }
-        }
-
-        /* 告知オーバーレイ */
-        #announce-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 3000;
-            display: none; align-items: center; justify-content: center;
-            pointer-events: none; transition: opacity 0.5s;
-        }
-        #announce-text { font-size: 4rem; font-weight: 900; color: #fff; text-shadow: 0 0 20px var(--accent); text-align: center; letter-spacing: 8px; }
-
-        /* ロビー・モーダル・リザルト */
-        #lobby, #result-overlay, #generic-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; }
-        .box { background: var(--panel-bg); padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); width: 90%; max-width: 500px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.4); }
-
-        input, select { background: #0f172a; border: 1px solid var(--border-color); color: #fff; padding: 12px; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        
-        /* 操作ボタン */
-        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .action-grid button { 
-            width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; 
-            transition: all 0.2s; background: var(--btn-action); color: white; font-size: 13px; border-bottom: 3px solid rgba(0,0,0,0.1);
-        }
-        .action-grid button:hover:not(:disabled) { background: #64748b; transform: translateY(-1px); }
-        .action-grid button.break-btn { background: var(--danger); border-bottom-color: #991b1b; }
-        button.primary-btn { background: var(--accent); color: white; padding: 14px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size: 1.1rem; }
-
-        /* マップグリッド */
-        #grid-container { background: var(--map-sea); padding: 10px; border-radius: 12px; border: 4px solid #1e2937; width: 100%; max-width: 1100px; box-sizing: border-box; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        #grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; width: 100%; aspect-ratio: 12 / 8; }
-        .cell { 
-            aspect-ratio: 1; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            font-size: clamp(8px, 1.1vw, 12px); font-weight: bold; cursor: pointer; transition: 0.15s; position: relative; border: 1px solid rgba(255,255,255,0.1); color: #fff;
-        }
-        .cell.sea { visibility: hidden; pointer-events: none; border: none; }
-        .cell:not(.sea):hover { border-color: #fff; z-index: 5; transform: scale(1.08); box-shadow: 0 0 15px rgba(255,255,255,0.3); }
-        .cell.selected { border: 2px solid #fff; box-shadow: 0 0 15px var(--accent); z-index: 10; }
-        .ally-mark { position: absolute; top: 1px; right: 1px; font-size: 10px; }
-
-        /* 国選択 */
-        #selection-panel { width: 100%; background: var(--panel-bg); border: 2px solid var(--border-color); border-radius: 12px; padding: 20px; margin-top: 20px; text-align: center; }
-        .country-btn-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
-        .country-choice { padding: 12px 18px; border-radius: 8px; border: 3px solid transparent; cursor: pointer; font-weight: bold; font-size: 14px; min-width: 100px; color: white; transition: 0.2s; }
-        .country-choice.taken { opacity: 0.15; cursor: not-allowed; text-decoration: line-through; filter: grayscale(1); }
-        .country-choice.active { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 20px rgba(255,255,255,0.4); }
-
-        /* ログ・チャット */
-        .log-chat-container { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-        .scroll-box { overflow-y: auto; background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 12px; }
-        #game-log { height: 160px; border-left: 5px solid var(--accent); }
-        #chat-box { height: 140px; color: #a5b4fc; border-left: 5px solid var(--success); }
-        .chat-input-row { display: flex; gap: 6px; }
-        
-        .info-card { background: #1f2937; padding: 15px; border-radius: 10px; margin-bottom: 12px; border: 1px solid var(--border-color); }
-        .score-row { display: flex; justify-content: space-between; font-size: 12px; padding: 5px 0; border-bottom: 1px solid #374151; }
-        .current-turn-glow { animation: glow 1.5s infinite alternate; }
-        @keyframes glow { from { box-shadow: 0 0 5px #fff; } to { box-shadow: 0 0 20px var(--accent); } }
-        .rank-item { padding: 15px; margin: 10px 0; border-radius: 8px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; color: #000; }
-    </style>
-</head>
-<body>
-
-    <!-- 告知 -->
-    <div id="announce-overlay"><div id="announce-text">GAME START</div></div>
-
-    <!-- ロビー -->
-    <div id="lobby">
-        <div class="box">
-            <h1 style="letter-spacing: 5px; color: var(--accent); font-size: 2.5rem; margin-bottom: 10px;">World War III</h1>
-            <div id="lobby-setup">
-                <button class="primary-btn" onclick="game.setLobbyMode('solo')" style="margin-bottom:15px;">一人で遊ぶ (AI対戦)</button>
-                <button class="primary-btn" onclick="game.setLobbyMode('team')" style="background:var(--success)">友達と遊ぶ (マルチプレイ)</button>
-                <div id="multi-setup" style="display:none; margin-top:20px; border-top:1px solid var(--border-color); padding-top:20px;">
-                    <input type="text" id="room-id" placeholder="部屋名を入力">
-                    <button class="primary-btn" onclick="hostRoom()">部屋を作成</button>
-                    <button class="primary-btn" onclick="joinRoom()" style="background:#4b5563">参加する</button>
-                </div>
-            </div>
-            <div id="lobby-wait" style="display:none">
-                <p id="room-display" style="color:var(--accent); font-weight:bold; font-size: 1.4rem;"></p>
-                <div id="player-list" style="text-align:left; font-size:14px; margin:15px 0; background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);"></div>
-                <button id="multi-init-map-btn" class="primary-btn" onclick="game.initAndShowMap()" style="display:none; background:var(--success)">世界を公開して国選択へ</button>
-                <small id="wait-msg" style="color: var(--gold); font-weight: bold;">通信待機中...</small>
-            </div>
-        </div>
-    </div>
-
-    <!-- リザルト -->
-    <div id="result-overlay" style="display:none">
-        <div class="box">
-            <h1 style="color:var(--gold); margin-top:0; font-size: 2rem;">最終結果発表</h1>
-            <div id="ranking-list"></div>
-            <button class="primary-btn" onclick="location.reload()" style="margin-top:20px; background:var(--danger)">ホーム画面に戻る</button>
-        </div>
-    </div>
-
-    <!-- モーダル -->
-    <div id="generic-modal" style="display:none">
-        <div class="box">
-            <h3 id="modal-text">-</h3>
-            <div id="modal-timer" style="font-size:3rem; color:var(--danger); font-weight:bold;">20</div>
-            <div id="modal-options" style="display:flex; gap:12px; margin-top:20px;">
-                <button id="modal-yes" class="primary-btn" style="background:var(--success); flex:1;">承認</button>
-                <button id="modal-no" class="primary-btn" style="background:var(--danger); flex:1;">拒否</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- サイドバー -->
-    <div id="sidebar" style="display: none;">
-        <div class="info-card">
-            <h2 style="font-size: 1.2rem; margin: 0 0 10px 0; color: var(--accent); border-bottom: 2px solid var(--accent); display: inline-block;">World War III</h2>
-            <h4 id="turn-display" style="color:var(--accent); margin:0">待機中</h4>
-            <p id="my-info" style="font-size:12px; margin:5px 0 0; opacity:0.9"></p>
-        </div>
-        <div class="info-card"><div id="score-board"></div></div>
-        <div class="info-card" id="detail-panel">
-            <div id="det-name" style="font-size: 1.1rem; font-weight: bold; color: var(--accent);">国を選択</div>
-            <div id="det-stats" style="font-size: 13px; margin-top: 8px; line-height: 1.6;">
-                所有者: <span id="det-owner">-</span><br>
-                総戦力: <span id="det-power" style="color:var(--danger); font-weight: bold;">-</span> / 
-                総資金: <span id="det-cash" style="color:var(--gold); font-weight: bold;">-</span>
-            </div>
-        </div>
-        <div id="actions" class="info-card" style="display:none">
-            <div style="display:flex; gap:6px; margin-bottom:10px;">
-                <input type="number" id="act-amount" value="20" min="10" step="10" style="margin:0; font-size:13px; height:38px;">
-                <button onclick="game.handleActionRequest('plus_max')" style="background:var(--success); margin:0; width:110px; height:38px; border:none; border-radius:6px; cursor:pointer; color:white; font-weight:bold; font-size: 12px;">軍拡(全額)</button>
-            </div>
-            <div class="action-grid">
-                <button onclick="game.handleActionRequest('war')">戦争(総力戦)</button>
-                <button onclick="game.handleActionRequest('tax')" id="tax-btn">徴税</button>
-                <button onclick="game.handleActionRequest('alliance')">同盟申請</button>
-                <button id="missile-btn" onclick="game.handleActionRequest('missile')" style="color:var(--gold)">ミサイル(攻)</button>
-                <button class="break-btn" onclick="game.handleActionRequest('break_alliance')">同盟破棄</button>
-                <button onclick="game.handleActionRequest('end')" style="background:#000">ターン終了</button>
-            </div>
-            <div id="host-round-actions" style="display:none; margin-top:10px;">
-                <button onclick="game.nextRound()" style="background:var(--accent); width:100%; border:none; border-radius:8px; color:white; padding:14px; font-weight:bold; cursor:pointer;">次のラウンドを開始</button>
-            </div>
-        </div>
-        <div class="log-chat-container">
-            <div id="game-log" class="scroll-box"></div>
-            <div id="chat-box" class="scroll-box"></div>
-            <div class="chat-input-row">
-                <input type="text" id="chat-input" placeholder="メッセージ..." style="margin:0; font-size:13px; height:36px;">
-                <button onclick="game.sendChat()" style="width:50px; margin:0; background:var(--accent); border:none; border-radius:6px; color:white; cursor:pointer; font-weight: bold;">送</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- メイン -->
-    <div id="main" style="display: none;">
-        <div id="grid-container">
-            <div id="grid"></div>
-        </div>
-        <div id="selection-panel" style="display:none">
-            <h3 id="selection-msg" style="margin-bottom: 5px;">担当する主要国を選んでください</h3>
-            <div id="country-btn-list" class="country-btn-list"></div>
-            <p style="font-size: 12px; margin-top: 15px; opacity: 0.8;">※人間プレイヤーが全員選び終わると自動的に開戦します</p>
-        </div>
-    </div>
-
-<script>
-    const peerConfig = {
-        config: {
-            'iceServers': [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
-                { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" }
-            ]
-        }
-    };
-
-    const MAJORS = [
-        { id: 'uk', name: 'イギリス', short: '英国', color: '#006400', power: 10, cash: 30 },
-        { id: 'fr', name: 'フランス', short: '仏国', color: '#b8860b', power: 10, cash: 30 },
-        { id: 'de', name: 'ドイツ', short: '独国', color: '#00008b', power: 10, cash: 30 },
-        { id: 'ni', name: '日本', short: '日本', color: '#8b0000', power: 10, cash: 30 },
-        { id: 'ca', name: 'カナダ', short: '加国', color: '#4b0082', power: 10, cash: 30 }
+Mainscene · TS
+import Phaser from 'phaser';
+import { PhysicsParameters, StageType, GameTelemetry } from '../types/game';
+import { soundManager } from '../audio/soundManager';
+ 
+type Body = Phaser.Physics.Arcade.Body;
+type Dir = 1 | -1;
+ 
+// =====================================================================
+//  入力
+// =====================================================================
+ 
+interface VirtualInput {
+  left: boolean;
+  right: boolean;
+  up: boolean;
+  down: boolean;
+  jump: boolean;
+  attack: boolean;
+  shield: boolean;
+  special: boolean; // 必殺ワザ
+  smash: boolean;   // スマッシュ攻撃（押している間ため）
+}
+ 
+/** 1フレーム分の操作。プレイヤーもCPUもこの形に揃えて同じ処理を通す */
+interface FighterInput {
+  left: boolean;
+  right: boolean;
+  up: boolean;
+  down: boolean;
+  shield: boolean;
+  jumpPressed: boolean;
+  attackPressed: boolean;
+  specialPressed: boolean;
+  smashPressed: boolean;
+  smashHeld: boolean;
+}
+ 
+const emptyInput = (): FighterInput => ({
+  left: false,
+  right: false,
+  up: false,
+  down: false,
+  shield: false,
+  jumpPressed: false,
+  attackPressed: false,
+  specialPressed: false,
+  smashPressed: false,
+  smashHeld: false,
+});
+ 
+// =====================================================================
+//  ワザデータ（ここを書き換えるだけで性能調整できる）
+// =====================================================================
+ 
+type MoveId =
+  | 'jab' | 'ftilt' | 'utilt' | 'dtilt'
+  | 'fsmash' | 'usmash' | 'dsmash'
+  | 'nair' | 'fair' | 'bair' | 'uair' | 'dair'
+  | 'neutralB' | 'sideB' | 'upB' | 'downB';
+ 
+interface MoveData {
+  name: string;
+  startup: number;   // 発生までの時間 (ms)
+  active: number;    // 判定の持続 (ms)
+  endlag: number;    // 後隙 (ms)
+  offsetX: number;   // 判定の中心（キャラ中心から、向き基準。+が前）
+  offsetY: number;
+  w: number;
+  h: number;
+  dmg: number;       // params.attackDamage に掛ける倍率
+  angle: number;     // ふっとばし角度（度）。0=前、90=真上、負=下向き（メテオ）
+  bkb: number;       // params.baseKnockback に掛ける倍率
+  kbg: number;       // params.knockbackGrowth に掛ける倍率
+  aerial?: boolean;  // 着地でキャンセルされ着地隙が発生
+  landingLag?: number;
+  away?: boolean;    // 相手が攻撃者のどちら側にいるかで飛ばす向きを決める（下スマ・空N）
+  smash?: boolean;
+  projectile?: boolean;
+  helplessAfter?: boolean; // 使用後しりもち落下（着地まで行動不能）
+}
+ 
+const MOVES: Record<MoveId, MoveData> = {
+  // --- 地上：弱・強攻撃 ---
+  jab:    { name: '弱',     startup: 50,  active: 70,  endlag: 110, offsetX: 30,  offsetY: 0,   w: 40,  h: 30, dmg: 0.4, angle: 35,  bkb: 0.35, kbg: 0.25 },
+  ftilt:  { name: '横強',   startup: 100, active: 100, endlag: 200, offsetX: 40,  offsetY: 0,   w: 56,  h: 32, dmg: 1.0, angle: 35,  bkb: 0.7,  kbg: 0.8 },
+  utilt:  { name: '上強',   startup: 80,  active: 120, endlag: 200, offsetX: 6,   offsetY: -44, w: 52,  h: 40, dmg: 0.9, angle: 85,  bkb: 0.7,  kbg: 0.75 },
+  dtilt:  { name: '下強',   startup: 60,  active: 90,  endlag: 160, offsetX: 36,  offsetY: 22,  w: 60,  h: 18, dmg: 0.7, angle: 20,  bkb: 0.55, kbg: 0.6 },
+  // --- 地上：スマッシュ攻撃（ためで最大1.5倍） ---
+  fsmash: { name: '横スマ', startup: 260, active: 100, endlag: 380, offsetX: 50,  offsetY: 0,   w: 66,  h: 40, dmg: 1.8, angle: 38,  bkb: 1.1,  kbg: 1.35, smash: true },
+  usmash: { name: '上スマ', startup: 220, active: 120, endlag: 360, offsetX: 0,   offsetY: -52, w: 58,  h: 56, dmg: 1.6, angle: 88,  bkb: 1.0,  kbg: 1.3,  smash: true },
+  dsmash: { name: '下スマ', startup: 200, active: 100, endlag: 340, offsetX: 0,   offsetY: 22,  w: 120, h: 24, dmg: 1.5, angle: 25,  bkb: 1.0,  kbg: 1.25, smash: true, away: true },
+  // --- 空中攻撃 ---
+  nair:   { name: '空N',    startup: 60,  active: 200, endlag: 160, offsetX: 0,   offsetY: 0,   w: 72,  h: 72, dmg: 0.8, angle: 45,  bkb: 0.6,  kbg: 0.6,  aerial: true, landingLag: 100, away: true },
+  fair:   { name: '空前',   startup: 120, active: 80,  endlag: 220, offsetX: 40,  offsetY: 0,   w: 54,  h: 40, dmg: 1.1, angle: 40,  bkb: 0.8,  kbg: 0.9,  aerial: true, landingLag: 140 },
+  bair:   { name: '空後',   startup: 100, active: 80,  endlag: 200, offsetX: -42, offsetY: 0,   w: 54,  h: 40, dmg: 1.2, angle: 140, bkb: 0.9,  kbg: 1.0,  aerial: true, landingLag: 140 },
+  uair:   { name: '空上',   startup: 80,  active: 100, endlag: 180, offsetX: 0,   offsetY: -46, w: 56,  h: 44, dmg: 0.9, angle: 82,  bkb: 0.7,  kbg: 0.8,  aerial: true, landingLag: 100 },
+  dair:   { name: '空下',   startup: 160, active: 100, endlag: 260, offsetX: 0,   offsetY: 42,  w: 42,  h: 40, dmg: 1.2, angle: -75, bkb: 0.8,  kbg: 0.9,  aerial: true, landingLag: 220 },
+  // --- 必殺ワザ ---
+  neutralB: { name: '飛び道具', startup: 160, active: 40, endlag: 260, offsetX: 0, offsetY: 0, w: 16, h: 16, dmg: 0.5, angle: 20, bkb: 0.4, kbg: 0.2, projectile: true },
+  sideB:  { name: '突進',   startup: 120, active: 220, endlag: 260, offsetX: 30,  offsetY: 0,   w: 56,  h: 44, dmg: 1.0, angle: 30,  bkb: 0.8,  kbg: 0.8 },
+  upB:    { name: '復帰',   startup: 80,  active: 260, endlag: 200, offsetX: 0,   offsetY: -30, w: 60,  h: 60, dmg: 0.9, angle: 80,  bkb: 0.7,  kbg: 0.6,  helplessAfter: true, landingLag: 160 },
+  downB:  { name: '急降下', startup: 120, active: 500, endlag: 200, offsetX: 0,   offsetY: 36,  w: 50,  h: 30, dmg: 1.1, angle: -70, bkb: 0.8,  kbg: 0.8,  landingLag: 180 },
+};
+ 
+/** 着地で終了するワザ（空中攻撃以外） */
+const LANDING_CANCEL: MoveId[] = ['upB', 'downB'];
+ 
+const DEG = Math.PI / 180;
+const SMASH_MAX_CHARGE = 1000; // ms
+const RESPAWN_INVULN = 1500;   // ms
+ 
+// =====================================================================
+//  ファイター状態（プレイヤーとCPUで共通）
+// =====================================================================
+ 
+interface AttackState {
+  id: MoveId;
+  move: MoveData;
+  elapsed: number;
+  dir: Dir;
+  power: number;     // スマッシュためによる倍率
+  hit: boolean;      // 1ワザ1ヒット
+  activated: boolean;
+}
+ 
+interface Projectile {
+  sprite: Phaser.Physics.Arcade.Image;
+  dir: Dir;
+  life: number;
+}
+ 
+interface Fighter {
+  key: 'player' | 'cpu';
+  sprite: Phaser.Physics.Arcade.Sprite;
+  color: number;
+  damage: number;
+  jumpsLeft: number;
+  facing: Dir;
+  attack: AttackState | null;
+  charge: { id: MoveId; elapsed: number } | null;
+  hitstun: number;
+  landingLag: number;
+  invuln: number;
+  shielding: boolean;
+  shieldHP: number;
+  shieldStun: number; // シールドブレイク中
+  helpless: boolean;
+  sideBUsed: boolean;
+  wasOnGround: boolean;
+  projectile: Projectile | null;
+  shieldBubble: Phaser.GameObjects.Arc;
+  percentText: Phaser.GameObjects.Text;
+  colliders: Phaser.Physics.Arcade.Collider[];
+}
+ 
+// =====================================================================
+//  シーン
+// =====================================================================
+ 
+export class MainScene extends Phaser.Scene {
+  private params: PhysicsParameters;
+  private currentStage: StageType = 'finalDestination';
+  private platforms!: Phaser.Physics.Arcade.StaticGroup;
+  private movingPlatform: Phaser.Physics.Arcade.Image | null = null;
+  private movingColliders: Phaser.Physics.Arcade.Collider[] = [];
+  private walls!: Phaser.Physics.Arcade.StaticGroup;
+ 
+  // Fighters
+  private playerF!: Fighter;
+  private cpu: Fighter | null = null;
+ 
+  // 既存UIとの互換用の公開フィールド（毎フレーム同期）
+  public player!: Phaser.Physics.Arcade.Sprite;
+  public jumpsLeft: number = 2;
+  public dummy: Phaser.Physics.Arcade.Sprite | null = null;
+  public dummyDamage: number = 0;
+  public dummyKOs: number = 0;
+  private playerDamage: number = 0;
+  private playerKOs: number = 0;
+  private dummySpawnEnabled: boolean = true;
+ 
+  // CPU設定
+  public cpuMode: 'cpu' | 'sandbag' = 'cpu';
+  public cpuLevel: number = 5; // 1〜9
+  private ai = {
+    timer: 0,
+    hold: { left: false, right: false, up: false, down: false },
+    shieldUntil: 0,
+    smashHoldMs: 0,
+    jumpCooldown: 0,
+  };
+ 
+  /** true: ↑/W でもジャンプ（スマブラの「はじきジャンプ」）。false: ジャンプは Space のみで上強・上スマが出しやすい */
+  public tapJump: boolean = false;
+ 
+  // Effects & Visuals
+  private blastEffectEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private dustEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
+  public showHitboxes: boolean = false;
+  public showTrajectory: boolean = true;
+  private trajectoryGraphics!: Phaser.GameObjects.Graphics;
+  private hitboxDebugGraphics!: Phaser.GameObjects.Graphics;
+ 
+  // Controls
+  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private keys!: {
+    left: Phaser.Input.Keyboard.Key;
+    right: Phaser.Input.Keyboard.Key;
+    up: Phaser.Input.Keyboard.Key;
+    down: Phaser.Input.Keyboard.Key;
+    space: Phaser.Input.Keyboard.Key;
+    attackJ: Phaser.Input.Keyboard.Key;
+    attackZ: Phaser.Input.Keyboard.Key;
+    smashL: Phaser.Input.Keyboard.Key;
+    smashX: Phaser.Input.Keyboard.Key;
+    specialU: Phaser.Input.Keyboard.Key;
+    specialC: Phaser.Input.Keyboard.Key;
+    shieldK: Phaser.Input.Keyboard.Key;
+    shieldShift: Phaser.Input.Keyboard.Key;
+  };
+ 
+  private virtualInput: VirtualInput = {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    jump: false,
+    attack: false,
+    shield: false,
+    special: false,
+    smash: false,
+  };
+  private prevVirtual = { jump: false, attack: false, special: false, smash: false };
+ 
+  // Telemetry callback to React
+  private onTelemetryUpdate?: (telemetry: GameTelemetry) => void;
+  private telemetryTimer: number = 0;
+ 
+  constructor(params: PhysicsParameters, onTelemetry?: (telemetry: GameTelemetry) => void) {
+    super('MainScene');
+    this.params = { ...params };
+    this.onTelemetryUpdate = onTelemetry;
+  }
+ 
+  setTelemetryCallback(callback: (telemetry: GameTelemetry) => void) {
+    this.onTelemetryUpdate = callback;
+  }
+ 
+  // -------------------------------------------------------------------
+  //  セットアップ
+  // -------------------------------------------------------------------
+ 
+  create() {
+    this.createProceduralTextures();
+    this.cameras.main.setBackgroundColor('#87ceeb');
+ 
+    this.platforms = this.physics.add.staticGroup();
+    this.walls = this.physics.add.staticGroup();
+    this.buildStage(this.currentStage);
+ 
+    const gw = this.params.gameWidth;
+    const gh = this.params.gameHeight;
+    this.playerF = this.createFighter('player', gw / 2, gh / 2, 'player', this.params.color, 0x3498db);
+    this.player = this.playerF.sprite;
+    this.jumpsLeft = this.playerF.jumpsLeft;
+ 
+    this.createDummy();
+    this.createParticles();
+ 
+    this.trajectoryGraphics = this.add.graphics();
+    this.hitboxDebugGraphics = this.add.graphics().setDepth(20);
+ 
+    this.cursors = this.input.keyboard!.createCursorKeys();
+    const K = Phaser.Input.Keyboard.KeyCodes;
+    this.keys = this.input.keyboard!.addKeys({
+      left: K.A,
+      right: K.D,
+      up: K.W,
+      down: K.S,
+      space: K.SPACE,
+      attackJ: K.J,
+      attackZ: K.Z,
+      smashL: K.L,
+      smashX: K.X,
+      specialU: K.U,
+      specialC: K.C,
+      shieldK: K.K,
+      shieldShift: K.SHIFT,
+    }) as typeof this.keys;
+ 
+    this.createBlastZoneHUD();
+  }
+ 
+  private createProceduralTextures() {
+    const g = this.make.graphics({ x: 0, y: 0 }, false);
+ 
+    // Player
+    g.fillStyle(this.params.color, 1);
+    g.fillRoundedRect(0, 0, this.params.width, this.params.height, 8);
+    g.fillStyle(0xffffff, 0.9);
+    g.fillRect(this.params.width - 12, 10, 8, 12);
+    g.fillStyle(0x2c3e50, 0.8);
+    g.fillRect(4, this.params.height - 20, this.params.width - 8, 4);
+    g.generateTexture('player', this.params.width, this.params.height);
+    g.clear();
+ 
+    // CPU（サンドバッグ兼用）
+    const dw = 38;
+    const dh = 54;
+    g.fillStyle(0xe67e22, 1);
+    g.fillRoundedRect(0, 0, dw, dh, 10);
+    g.fillStyle(0xffffff, 0.9);
+    g.fillRect(dw - 12, 10, 8, 12);
+    g.fillStyle(0x2c3e50, 0.8);
+    g.fillRect(4, dh - 20, dw - 8, 4);
+    g.generateTexture('dummy', dw, dh);
+    g.clear();
+ 
+    // Ground
+    g.fillStyle(0x3e5e34, 1);
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle(0x5cb85c, 1);
+    g.fillRect(0, 0, 32, 6);
+    g.generateTexture('ground', 32, 32);
+    g.clear();
+ 
+    // Floating platform
+    g.fillStyle(0x8e5d38, 1);
+    g.fillRoundedRect(0, 0, 32, 12, 4);
+    g.fillStyle(0xd4ac0d, 1);
+    g.fillRect(2, 0, 28, 2);
+    g.generateTexture('platform', 32, 12);
+    g.clear();
+ 
+    // Wall
+    g.fillStyle(0x34495e, 1);
+    g.fillRect(0, 0, 24, 24);
+    g.lineStyle(1, 0x7f8c8d, 1);
+    g.strokeRect(1, 1, 22, 22);
+    g.generateTexture('wall', 24, 24);
+    g.clear();
+ 
+    // 飛び道具
+    g.fillStyle(0xffffff, 0.5);
+    g.fillCircle(9, 9, 9);
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(9, 9, 5);
+    g.generateTexture('energy', 18, 18);
+    g.clear();
+ 
+    // Particle
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(4, 4, 4);
+    g.generateTexture('particle', 8, 8);
+    g.destroy();
+  }
+ 
+  private createFighter(
+    key: 'player' | 'cpu',
+    x: number,
+    y: number,
+    texture: string,
+    color: number,
+    shieldColor: number
+  ): Fighter {
+    const sprite = this.physics.add.sprite(x, y, texture);
+    (sprite.body as Body).setMaxVelocity(1600, 1400);
+ 
+    const shieldBubble = this.add.circle(x, y, 36, shieldColor, 0.45);
+    shieldBubble.setStrokeStyle(3, shieldColor, 0.9);
+    shieldBubble.setVisible(false).setDepth(5);
+ 
+    const percentText = this.add
+      .text(x, y, '0%', {
+        fontSize: '16px',
+        fontStyle: 'bold',
+        color: '#ffffff',
+        stroke: '#1a1a2e',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setDepth(10);
+ 
+    const colliders = [
+      this.physics.add.collider(sprite, this.platforms),
+      this.physics.add.collider(sprite, this.walls),
     ];
-    const SUPERS = [
-        { id: 'us', name: 'アメリカ', short: '米国', color: '#000000', power: 300, cash: 900 },
-        { id: 'cn', name: '中国', short: '中国', color: '#000000', power: 300, cash: 900 },
-        { id: 'ru', name: 'ロシア', short: '露国', color: '#000000', power: 300, cash: 900 },
-        { id: 'in', name: 'インド', short: '印国', color: '#000000', power: 300, cash: 900 },
-        { id: 'br', name: 'ブラジル', short: '伯国', color: '#000000', power: 300, cash: 900 }
-    ];
-    const MIDDLES = ["オーストラリア", "韓国", "イタリア", "スペイン", "メキシコ", "インドネシア", "トルコ", "サウジアラビア", "南アフリカ", "アルゼンチン", "オランダ", "スイス", "スウェーデン", "ポーランド", "タイ", "マレーシア", "フィリピン", "エジプト", "パキスタン", "ナイジェリア", "イラン", "コロンビア", "ベトナム", "チリ", "カザフスタン"]
-        .map((n, i) => ({ id: `m${i}`, name: n, short: n.slice(0, 2), color: '#334155', power: 50, cash: 150 }));
-    const SMALLS = ["ニュージーランド", "シンガポール", "アイルランド", "ノルウェー", "デンマーク", "フィンランド", "ベルギー", "オーストリア", "ポルトガル", "ギリシャ", "イスラエル", "チェコ", "ハンガリー", "ルーマニア", "ブルガリア", "スロバキア", "クロアチア", "リトアニア", "ラトビア", "エストニア", "アイスランド", "ルクセンブルク", "モナコ", "リヒテンシュタイン", "アンドラ", "サンマリノ", "ブータン", "モルディブ", "フィジー", "ブルネイ", "バーレーン", "カタール", "オマーン", "ウルグアイ", "パラグアイ", "エクアドル", "ジャマイカ", "トリニダード・トバゴ", "バハマ", "キプロス", "スロベニア", "コスタリカ", "パナマ", "クウェート", "マルタ", "モーリシャス"]
-        .map((n, i) => ({ id: `s${i}`, name: n, short: n.slice(0, 2), color: '#64748b', power: 10, cash: 30 }));
-
-    class GameCore {
-        constructor() {
-            this.resetData();
-            this.peer = null; this.conns = {}; this.myPeerId = null; this.isHost = false; 
-            this.selectedIdx = null; this.hostId = null; this.myCountryId = null;
-            this.lobbyMode = '';
-            this.wasMyTurn = false;
-        }
-
-        resetData() {
-            this.state = { 
-                phase: 'lobby', grid: [], turnIdx: 0, players: {}, taxUsed: {}, alliances: [], isStarted: false, winner: null, 
-                scores: { uk: 0, fr: 0, de: 0, ni: 0, ca: 0 }, 
-                maxLands: { uk: 0, fr: 0, de: 0, ni: 0, ca: 0 },
-                warCooldown: { uk: 0, fr: 0, de: 0, ni: 0, ca: 0 },
-                round: 1, logs: [], chatLogs: [], countrySelectionDone: false
-            };
-            this.wasMyTurn = false;
-        }
-
-        updateUIVisibility() {
-            const p = this.state.phase;
-            if (document.getElementById('lobby')) document.getElementById('lobby').style.display = (p === 'lobby') ? 'flex' : 'none';
-            if (document.getElementById('main')) document.getElementById('main').style.display = (p === 'lobby') ? 'none' : 'flex';
-            if (document.getElementById('sidebar')) document.getElementById('sidebar').style.display = (p === 'lobby') ? 'none' : 'flex';
-            if (document.getElementById('selection-panel')) document.getElementById('selection-panel').style.display = (p === 'country_select') ? 'block' : 'none';
-            if (document.getElementById('actions')) document.getElementById('actions').style.display = (p === 'playing') ? 'block' : 'none';
-        }
-
-        showAnnounce(msg) {
-            const overlay = document.getElementById('announce-overlay');
-            const text = document.getElementById('announce-text');
-            if(!overlay || !text) return;
-            text.textContent = msg; overlay.style.display = 'flex'; overlay.style.opacity = '1';
-            setTimeout(() => { overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 500); }, 2000);
-        }
-
-        setLobbyMode(mode) {
-            this.lobbyMode = mode;
-            if (mode === 'solo') { this.isHost = true; this.initMap(); this.state.phase = 'country_select'; }
-            else { document.getElementById('multi-setup').style.display = 'block'; }
-            this.updateUIVisibility(); this.updateUI();
-        }
-
-        initAndShowMap() { if (this.isHost) { this.initMap(); this.state.phase = 'country_select'; this.broadcast(); } }
-
-        isHumanPlayer(majorId) { return Object.keys(this.state.players).some(key => !key.startsWith('ai_') && this.state.players[key] === majorId); }
-
-        selectCountry(majorId) {
-            console.log('国選択: ' + majorId);
-            const pId = this.myPeerId || 'host';
-            if (Object.values(this.state.players).includes(majorId)) return;
-
-            // 修正事項4：ローカルに即時反映
-            this.state.players[pId] = majorId;
-            this.myCountryId = majorId;
-            this.updateUI();
-
-            if (this.lobbyMode === 'solo') {
-                MAJORS.forEach(m => { if (!Object.values(this.state.players).includes(m.id)) this.state.players['ai_' + m.id] = m.id; });
-                this.state.phase = 'playing'; this.state.isStarted = true; this.state.countrySelectionDone = true;
-                this.showAnnounce("GAME START"); this.checkAIStart();
-            } else if (this.isHost) {
-                this.checkAutoStart(); this.broadcast();
-            } else {
-                if (this.conns[this.hostId]) this.conns[this.hostId].send({ type: 'select_country', peerId: pId, countryId: majorId });
-            }
-        }
-
-        checkAutoStart() {
-            if (!this.isHost) return;
-            const humanCount = Object.keys(this.conns).length + 1;
-            const chosenCount = Object.keys(this.state.players).filter(k => !k.startsWith('ai_')).length;
-            if (chosenCount >= humanCount) {
-                MAJORS.forEach(m => { if (!Object.values(this.state.players).includes(m.id)) this.state.players['ai_' + m.id] = m.id; });
-                this.state.phase = 'playing'; this.state.isStarted = true; this.state.countrySelectionDone = true;
-                this.state.turnIdx = 0; this.addLog("全プレイヤー準備完了。対戦開始！");
-                setTimeout(() => this.showAnnounce("GAME START"), 500);
-                this.broadcast(); this.checkAIStart();
-            }
-        }
-
-        checkAIStart() {
-            if (!this.isHost) return;
-            const firstId = MAJORS[0].id;
-            if (!this.isHumanPlayer(firstId)) { setTimeout(() => this.runAI(firstId), 2000); }
-        }
-
-        initMap() {
-            const all = [...MAJORS, ...SUPERS, ...MIDDLES, ...SMALLS];
-            const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } };
-            shuffle(all);
-            this.state.grid = Array(96).fill(null).map((_, i) => {
-                const x = i % 12, y = Math.floor(i / 12);
-                if ((x <= 7) || (x >= 9 && x <= 11 && y <= 2) || (x >= 8 && x <= 9 && y >= 4)) {
-                    const c = all.pop(); return { ...c, ownerId: c.id, pos: i, power: c.power, cash: c.cash };
-                }
-                return { isSea: true, pos: i };
-            });
-            MAJORS.forEach(m => { this.state.taxUsed[m.id] = 0; this.state.warCooldown[m.id] = 0; });
-            this.state.turnIdx = 0; this.state.winner = null; this.state.alliances = [];
-        }
-
-        nextRound() {
-            if (!this.isHost) return;
-            this.state.round++; this.initMap(); this.state.phase = 'playing'; this.state.isStarted = true;
-            this.addLog(`第 ${this.state.round} ラウンド開始。`); this.broadcast(); this.showAnnounce(`ROUND ${this.state.round}`); this.checkAIStart();
-        }
-
-        broadcast() {
-            if (!this.isHost || !this.state) return;
-            MAJORS.forEach(m => {
-                const count = this.state.grid.filter(c => c && !c.isSea && c.ownerId === m.id).length;
-                if (count > this.state.maxLands[m.id]) this.state.maxLands[m.id] = count;
-            });
-            Object.values(this.conns).forEach(c => c.send({ type: 'sync', state: this.state }));
-            this.updateUIVisibility(); this.updateUI();
-        }
-
-        addLog(msg) { if (this.isHost) { this.state.logs.push(msg); if (this.state.logs.length > 50) this.state.logs.shift(); } }
-        addChat(msg) { if (this.isHost) { this.state.chatLogs.push(msg); if (this.state.chatLogs.length > 50) this.state.chatLogs.shift(); } }
-
-        sendChat() {
-            const input = document.getElementById('chat-input');
-            const txt = input.value ? input.value.trim() : "";
-            if (!txt) return;
-            const sender = MAJORS.find(m => m.id === this.myCountryId)?.name || '観戦者';
-            const fullMsg = `${sender}: ${txt}`;
-            if (this.isHost) { this.addChat(fullMsg); this.broadcast(); }
-            else { if(this.conns[this.hostId]) this.conns[this.hostId].send({ type: 'chat', msg: fullMsg }); }
-            input.value = '';
-        }
-
-        handleActionRequest(type) {
-            if (!this.canIMove()) return;
-            const myId = this.state.players[this.myPeerId || 'host'];
-            const amount = parseInt(document.getElementById('act-amount').value) || 20;
-            if (this.isHost) this.applyAction(myId, type, this.selectedIdx, amount);
-            else { if(this.conns[this.hostId]) this.conns[this.hostId].send({ type: 'action', actorId: myId, actType: type, targetIdx: this.selectedIdx, amount }); }
-        }
-
-        getMajorBaseCell(majorId) { return this.state.grid.find(c => c && !c.isSea && c.id === majorId); }
-
-        applyAction(actorId, type, targetIdx, amount) {
-            if (!this.isHost || this.state.winner) return;
-            const actorBase = this.getMajorBaseCell(actorId);
-            const myCells = this.state.grid.filter(c => c && !c.isSea && c.ownerId === actorId);
-            let logMsg = "";
-
-            switch(type) {
-                case 'war':
-                    if (targetIdx === null) break;
-                    const targetCell = this.state.grid[targetIdx];
-                    if (!targetCell || targetCell.isSea || targetCell.ownerId === actorId || this.isAlly(actorId, targetCell.ownerId)) break;
-                    if (!this.isAdj(myCells.map(c => c.pos), targetIdx)) break;
-                    const isMajor = MAJORS.some(m => m.id === targetCell.ownerId);
-                    const enemyPower = isMajor ? this.getMajorBaseCell(targetCell.ownerId).power : (SUPERS.some(s=>s.id===targetCell.ownerId) ? SUPERS.find(s=>s.id===targetCell.ownerId).power : targetCell.power);
-                    if (actorBase.power > enemyPower) {
-                        actorBase.power -= enemyPower;
-                        const enemyBase = isMajor ? this.getMajorBaseCell(targetCell.ownerId) : targetCell;
-                        actorBase.cash += enemyBase.cash;
-                        // 修正事項2：全領土吸収の廃止、1マスのみ占領
-                        logMsg = `${actorBase.name}が${targetCell.name}を制圧。`;
-                        targetCell.ownerId = actorId;
-                        if (isMajor) { enemyBase.power = 0; enemyBase.cash = 0; }
-                        if (!this.isHumanPlayer(actorId)) this.state.warCooldown[actorId] = 3;
-                        this.checkRoundVictory();
-                    } else { logMsg = `${actorBase.name}の侵攻は失敗。`; }
-                    break;
-                case 'tax':
-                    if (this.state.taxUsed[actorId] < 5) {
-                        const gain = myCells.length * 20; actorBase.cash += gain; this.state.taxUsed[actorId]++;
-                        logMsg = `${actorBase.name}が徴税を実施。`;
-                    } break;
-                case 'plus_max':
-                    const pMax = Math.floor(actorBase.cash / 2);
-                    if (pMax > 0) { actorBase.cash -= pMax * 2; actorBase.power += pMax; logMsg = `${actorBase.name}が全額軍拡。`; }
-                    break;
-                case 'alliance':
-                    if (targetIdx === null) break;
-                    const tid = this.state.grid[targetIdx].ownerId;
-                    if (MAJORS.some(m => m.id === tid) && tid !== actorId) {
-                        const targetPeer = Object.keys(this.state.players).find(key => this.state.players[key] === tid);
-                        if (targetPeer && !targetPeer.startsWith('ai_') && targetPeer !== this.myPeerId) {
-                            this.conns[targetPeer].send({ type: 'modal_request', modalType: 'alliance', fromId: actorId }); return; 
-                        } else { this.state.alliances.push([actorId, tid]); logMsg = `🤝 ${actorBase.name}と${MAJORS.find(m=>m.id===tid).name}が同盟。`; }
-                    } break;
-                case 'alliance_ok': this.state.alliances.push([actorId, targetIdx]); this.addLog(`🤝 ${actorBase.name}と同盟成立！`); this.nextTurn(); return;
-                case 'alliance_ng': this.addLog(`💔 同盟申請は拒絶。`); this.nextTurn(); return;
-                case 'break_alliance':
-                    if (targetIdx === null) break;
-                    const b_tid = this.state.grid[targetIdx].ownerId;
-                    if (this.isAlly(actorId, b_tid)) { this.state.alliances = this.state.alliances.filter(p => !(p.includes(actorId) && p.includes(b_tid))); logMsg = `⚠️ ${actorBase.name}が同盟破棄。`; }
-                    break;
-                case 'missile': // 修正事項1：ミサイル機能の刷新
-                    if (targetIdx === null) break;
-                    const mTarget = this.state.grid[targetIdx];
-                    if (!mTarget || mTarget.isSea || mTarget.ownerId === actorId || this.isAlly(actorId, mTarget.ownerId)) break;
-                    if (actorBase.cash >= amount) {
-                        actorBase.cash -= amount;
-                        const tOwner = mTarget.ownerId;
-                        const isM = MAJORS.some(m => m.id === tOwner);
-                        const isS = SUPERS.some(s => s.id === tOwner);
-                        let targetStats = (isM || isS) ? (this.getMajorBaseCell(tOwner) || mTarget) : mTarget;
-                        
-                        targetStats.power -= amount;
-                        if (targetStats.power <= 0) {
-                            targetStats.power = 0;
-                            mTarget.ownerId = actorId;
-                            logMsg = `🚀 ${actorBase.name}が${mTarget.name}をミサイルで制圧(威力:${amount})！領土を奪取した！`;
-                        } else {
-                            logMsg = `🚀 ${actorBase.name}のミサイル攻撃(威力:${amount})！${mTarget.name}の戦力は残り${targetStats.power}。`;
-                        }
-                        this.checkRoundVictory();
-                    } else { logMsg = `ミサイル資金不足(要求:${amount})。`; }
-                    break;
-                case 'end': logMsg = `${actorBase.name}はターン終了。`; break;
-            }
-            if (logMsg) this.addLog(logMsg);
-            this.nextTurn();
-        }
-
-        isAdj(myPosList, targetIdx) {
-            const tx = targetIdx % 12, ty = Math.floor(targetIdx / 12);
-            return myPosList.some(p => {
-                const mx = p % 12, my = Math.floor(p / 12);
-                if (Math.abs(mx - tx) + Math.abs(my - ty) === 1) return true;
-                if (mx === 7 && my <= 2 && tx === 9 && ty <= 2) return true;
-                if (mx === 9 && my <= 2 && tx === 7 && ty <= 2) return true;
-                if (mx === 7 && my >= 4 && tx === 8 && ty >= 4) return true;
-                if (mx === 8 && my >= 4 && tx === 7 && ty >= 4) return true;
-                return false;
-            });
-        }
-
-        showModal(type, fromId) {
-            const modal = document.getElementById('generic-modal'); const timerEl = document.getElementById('modal-timer');
-            if(!modal) return; modal.style.display = 'flex';
-            let timeLeft = 10; timerEl.textContent = timeLeft;
-            document.getElementById('modal-text').textContent = `${MAJORS.find(m=>m.id===fromId).name}から同盟申請`;
-            this.modalTimer = setInterval(() => { timeLeft--; timerEl.textContent = timeLeft; if (timeLeft <= 0) this.closeModal(false, type, fromId); }, 1000);
-            document.getElementById('modal-yes').onclick = () => this.closeModal(true, type, fromId);
-            document.getElementById('modal-no').onclick = () => this.closeModal(false, type, fromId);
-        }
-
-        closeModal(agreed, type, fromId) {
-            clearInterval(this.modalTimer); document.getElementById('generic-modal').style.display = 'none';
-            const ans = agreed ? 'alliance_ok' : 'alliance_ng';
-            if (this.isHost) this.applyAction(fromId, ans, this.myCountryId, 0);
-            else if(this.conns[this.hostId]) this.conns[this.hostId].send({ type: 'alliance_answer', fromId, toId: this.myCountryId, agreed });
-        }
-
-        nextTurn() {
-            if (!this.isHost) return;
-            if (this.state.winner) { this.broadcast(); return; }
-            this.state.turnIdx = (this.state.turnIdx + 1) % 5;
-            const nextId = MAJORS[this.state.turnIdx].id;
-            if (!this.state.grid.some(c => c && !c.isSea && c.ownerId === nextId)) return this.nextTurn();
-            this.broadcast();
-            if (!this.isHumanPlayer(nextId)) setTimeout(() => this.runAI(nextId), 1200);
-        }
-
-        runAI(id) {
-            try {
-                if (!this.isHost) return;
-                if (!this.state.warCooldown) this.state.warCooldown = {};
-                if (this.state.warCooldown[id] === undefined) this.state.warCooldown[id] = 0;
-                if (!this.state.taxUsed) this.state.taxUsed = {};
-                if (this.state.taxUsed[id] === undefined) this.state.taxUsed[id] = 0;
-                const actorBase = this.getMajorBaseCell(id); if (!actorBase) { this.nextTurn(); return; }
-                const myPosList = this.state.grid.filter(c => c && !c.isSea && c.ownerId === id).map(c => c.pos);
-                if (this.state.warCooldown[id] > 0) {
-                    this.state.warCooldown[id]--;
-                } else {
-                    let bestT = null; let minP = Infinity;
-                    this.state.grid.forEach((t, tidx) => {
-                        if (t && !t.isSea && t.ownerId !== id && !this.isAlly(id, t.ownerId)) {
-                            if (this.isAdj(myPosList, tidx)) {
-                                const isM = MAJORS.some(m => m.id === t.ownerId);
-                                const isS = SUPERS.some(s => s.id === t.ownerId);
-                                let p = t.power;
-                                if (isM) { const base = this.getMajorBaseCell(t.ownerId); if(base) p = base.power; }
-                                else if (isS) { const sup = SUPERS.find(s=>s.id === t.ownerId); if(sup) p = sup.power; }
-                                if (actorBase.power > p && p < minP) { minP = p; bestT = tidx; }
-                            }
-                        }
-                    });
-                    if (bestT !== null) return this.applyAction(id, 'war', bestT, 0);
-                }
-                if (actorBase.cash >= 20) return this.applyAction(id, 'plus_max', null, 0);
-                this.applyAction(id, 'end', null, 0);
-            } catch (e) { console.error("AI Error:", e); this.applyAction(id, 'end', null, 0); }
-        }
-
-        checkRoundVictory() {
-            const alive = MAJORS.filter(m => this.state.grid.some(c => c && !c.isSea && c.ownerId === m.id));
-            if (alive.length === 1) {
-                const win = alive[0]; this.state.winner = win.name; this.state.scores[win.id]++;
-                this.addLog(`第 ${this.state.round} ラウンド覇者：${win.name}`);
-                if (this.state.scores[win.id] >= 2) this.showFinalResult();
-                this.broadcast();
-            }
-        }
-
-        showFinalResult() {
-            const ranking = MAJORS.map(m => ({ name: m.name, score: this.state.scores[m.id], lands: this.state.maxLands[m.id] })).sort((a, b) => b.score - a.score || b.lands - a.lands);
-            const list = document.getElementById('ranking-list'); if(list) list.innerHTML = "";
-            ranking.slice(0, 3).forEach((r, i) => {
-                const colors = ['var(--gold)', 'var(--silver)', 'var(--bronze)'];
-                list.innerHTML += `<div class="rank-item" style="background:${colors[i]}"><span>${i+1}位: ${r.name}</span><span>${r.score}勝</span></div>`;
-            });
-            document.getElementById('result-overlay').style.display = 'flex';
-        }
-
-        renderCountryList() {
-            const list = document.getElementById('country-btn-list'); if (!list) return;
-            list.innerHTML = '';
-            MAJORS.forEach(m => {
-                const takenPeer = Object.keys(this.state.players).find(p => this.state.players[p] === m.id);
-                const btn = document.createElement('div');
-                btn.className = 'country-choice' + (takenPeer ? ' taken' : '') + (this.myCountryId === m.id ? ' active' : '');
-                btn.style.background = m.color; btn.textContent = m.name + (takenPeer ? " (済)" : "");
-                if (!takenPeer) btn.onclick = () => window.selectCountry(m.id);
-                list.appendChild(btn);
-            });
-        }
-
-        canIMove() {
-            const myId = this.state.players[this.myPeerId || 'host'];
-            const curId = MAJORS[this.state.turnIdx].id;
-            return this.state.phase === 'playing' && !this.state.winner && myId === curId;
-        }
-
-        isAlly(id1, id2) { return this.state.alliances.some(pair => (pair.includes(id1) && pair.includes(id2))); }
-
-        updateUI() {
-            if (!this.state) return;
-            this.updateUIVisibility();
-            if (this.state.phase === 'country_select') this.renderCountryList();
-
-            // 修正事項3：ターン開始告知
-            const isMyTurnNow = this.canIMove();
-            if (isMyTurnNow && !this.wasMyTurn) {
-                this.showAnnounce("あなたのターンです！");
-            }
-            this.wasMyTurn = isMyTurnNow;
-
-            const gridEl = document.getElementById('grid'); if(!gridEl) return;
-            gridEl.innerHTML = '';
-            const activeId = MAJORS[this.state.turnIdx].id;
-            this.state.grid.forEach((cell, i) => {
-                const div = document.createElement('div'); div.className = 'cell';
-                if (cell.isSea) div.classList.add('sea');
-                else {
-                    if (this.selectedIdx === i) div.classList.add('selected');
-                    if (cell.ownerId === activeId && this.state.phase === 'playing' && !this.state.winner) div.classList.add('current-turn-glow');
-                    const currentOwner = MAJORS.find(m => m.id === cell.ownerId);
-                    const isSuper = SUPERS.some(s => s.id === cell.ownerId);
-                    if (currentOwner) div.style.background = currentOwner.color;
-                    else if (isSuper) div.style.background = 'var(--super-bg)';
-                    else div.style.background = cell.id.startsWith('m') ? 'var(--mid-bg)' : 'var(--small-bg)';
-                    div.innerHTML = `<span>${currentOwner ? currentOwner.short : cell.short}</span>`;
-                    if (this.isAlly(activeId, cell.ownerId)) div.innerHTML += `<span class="ally-mark">🤝</span>`;
-                    div.onclick = () => { this.selectedIdx = i; this.updateUI(); };
-                }
-                gridEl.appendChild(div);
-            });
-
-            if (this.selectedIdx !== null) {
-                const c = this.state.grid[this.selectedIdx]; 
-                if (c && !c.isSea) {
-                    const st = MAJORS.some(m => m.id === c.ownerId) ? this.getMajorBaseCell(c.ownerId) : (SUPERS.some(s=>s.id===c.ownerId) ? SUPERS.find(s=>s.id===c.ownerId) : c);
-                    const ownerName = MAJORS.find(m => m.id === c.ownerId)?.name || (SUPERS.some(s=>s.id===c.ownerId) ? SUPERS.find(s=>s.id===c.ownerId).name : "NPC");
-                    document.getElementById('det-name').textContent = (c.id !== c.ownerId) ? `${ownerName}領 ${c.name}` : c.name;
-                    document.getElementById('det-owner').textContent = ownerName;
-                    document.getElementById('det-power').textContent = st.power; document.getElementById('det-cash').textContent = st.cash;
-                }
-            }
-
-            document.getElementById('game-log').innerHTML = this.state.logs.slice().reverse().map(l => `<div>> ${l}</div>`).join('');
-            const cb = document.getElementById('chat-box');
-            cb.innerHTML = this.state.chatLogs.slice().map(l => `<div>${l}</div>`).join('');
-            cb.scrollTop = cb.scrollHeight;
-
-            const sb = document.getElementById('score-board'); if(sb) sb.innerHTML = '';
-            MAJORS.forEach(m => { sb.innerHTML += `<div class="score-row"><span>${m.name}</span> <span>${this.state.scores[m.id]}勝 (${this.state.maxLands[m.id]}領)</span></div>`; });
-            
-            const display = document.getElementById('turn-display');
-            if (this.state.winner) display.textContent = `勝者：${this.state.winner}`;
-            else if (this.state.phase === 'playing') display.textContent = `${MAJORS[this.state.turnIdx].name}の番`;
-            else display.textContent = "国を選択中...";
-            
-            const myMid = this.state.players[this.myPeerId || 'host'];
-            document.getElementById('my-info').textContent = `担当：${MAJORS.find(m => m.id === myMid)?.name || '未選択'}`;
-            
-            const ra = document.getElementById('host-round-actions');
-            if (ra) ra.style.display = (this.state.winner && this.isHost) ? 'block' : 'none';
-        }
+    if (this.movingPlatform) {
+      this.movingColliders.push(this.physics.add.collider(sprite, this.movingPlatform));
     }
-
-    const game = new GameCore();
-    window.selectCountry = (id) => game.selectCountry(id);
-
-    window.onload = () => {
-        game.state.phase = 'lobby'; game.updateUIVisibility();
-        document.getElementById('chat-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') game.sendChat(); });
+ 
+    return {
+      key,
+      sprite,
+      color,
+      damage: 0,
+      jumpsLeft: this.params.maxJumps,
+      facing: key === 'player' ? 1 : -1,
+      attack: null,
+      charge: null,
+      hitstun: 0,
+      landingLag: 0,
+      invuln: 0,
+      shielding: false,
+      shieldHP: 100,
+      shieldStun: 0,
+      helpless: false,
+      sideBUsed: false,
+      wasOnGround: false,
+      projectile: null,
+      shieldBubble,
+      percentText,
+      colliders,
     };
-
-    function hostRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("名前入力");
-        game.lobbyMode = 'host'; game.isHost = true; game.peer = new Peer(rId, peerConfig);
-        game.peer.on('open', id => {
-            game.myPeerId = id; document.getElementById('room-display').textContent = "部屋：" + id;
-            document.getElementById('lobby-setup').style.display = 'none'; document.getElementById('lobby-wait').style.display = 'block';
-            document.getElementById('multi-init-map-btn').style.display = 'block';
-        });
-        game.peer.on('connection', conn => {
-            game.conns[conn.peer] = conn;
-            conn.on('data', d => {
-                if (d.type === 'select_country') { 
-                    game.state.players[d.peerId] = d.countryId; 
-                    game.updateUI(); // 修正事項4：即反映
-                    game.checkAutoStart(); 
-                }
-                if (d.type === 'action') game.applyAction(d.actorId, d.actType, d.targetIdx, d.amount);
-                if (d.type === 'alliance_answer') game.applyAction(d.fromId, d.agreed ? 'alliance_ok' : 'alliance_ng', d.toId, 0);
-                if (d.type === 'chat') { game.addChat(d.msg); game.broadcast(); }
-            });
-            conn.on('close', () => {
-                const mid = game.state.players[conn.peer];
-                if (mid) {
-                    delete game.state.players[conn.peer]; game.state.players['ai_' + mid] = mid;
-                    game.addLog(`⚠️ ${MAJORS.find(m=>m.id===mid).name} 切断。AIが継承。`);
-                    game.broadcast(); if (MAJORS[game.state.turnIdx].id === mid) game.checkAIStart();
-                }
-                delete game.conns[conn.peer];
-            });
-        });
+  }
+ 
+  private destroyFighter(f: Fighter) {
+    f.colliders.forEach((c) => c.destroy());
+    f.projectile?.sprite.destroy();
+    f.shieldBubble.destroy();
+    f.percentText.destroy();
+    f.sprite.destroy();
+  }
+ 
+  private createDummy() {
+    if (!this.dummySpawnEnabled) return;
+    this.cpu = this.createFighter(
+      'cpu',
+      this.params.gameWidth / 2 + 120,
+      this.params.gameHeight - 120,
+      'dummy',
+      0xe67e22,
+      0xe67e22
+    );
+    this.dummy = this.cpu.sprite;
+    this.ai.timer = 0;
+  }
+ 
+  private createParticles() {
+    this.blastEffectEmitter = this.add.particles(0, 0, 'particle', {
+      speed: { min: 200, max: 600 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 1.5, end: 0 },
+      alpha: { start: 1, end: 0 },
+      lifespan: 600,
+      tint: [0xff4757, 0xffa502, 0xffffff, 0x2ed573],
+      emitting: false,
+    });
+ 
+    this.dustEmitter = this.add.particles(0, 0, 'particle', {
+      speed: { min: 30, max: 80 },
+      angle: { min: 180, max: 360 },
+      scale: { start: 0.8, end: 0 },
+      lifespan: 250,
+      tint: 0xdcdde1,
+      emitting: false,
+    });
+  }
+ 
+  private createBlastZoneHUD() {
+    const w = this.params.gameWidth;
+    const h = this.params.gameHeight;
+    const blastG = this.add.graphics();
+    blastG.lineStyle(2, 0xff4757, 0.3);
+    blastG.strokeRect(4, 4, w - 8, h - 8);
+    blastG.fillStyle(0xff4757, 0.2);
+    blastG.fillTriangle(0, 0, 30, 0, 0, 30);
+    blastG.fillTriangle(w, 0, w - 30, 0, w, 30);
+    blastG.fillTriangle(0, h, 30, h, 0, h - 30);
+    blastG.fillTriangle(w, h, w - 30, h, w, h - 30);
+  }
+ 
+  // -------------------------------------------------------------------
+  //  ステージ
+  // -------------------------------------------------------------------
+ 
+  public setStage(stage: StageType) {
+    this.currentStage = stage;
+    this.buildStage(stage);
+  }
+ 
+  private buildStage(stage: StageType) {
+    this.platforms.clear(true, true);
+    this.walls.clear(true, true);
+    this.movingColliders.forEach((c) => c.destroy());
+    this.movingColliders = [];
+    if (this.movingPlatform) {
+      this.movingPlatform.destroy();
+      this.movingPlatform = null;
     }
-
-    function joinRoom() {
-        const rId = document.getElementById('room-id').value.trim(); if (!rId) return alert("名前入力");
-        game.lobbyMode = 'guest'; game.isHost = false; game.hostId = rId; game.peer = new Peer(peerConfig);
-        game.peer.on('open', id => {
-            game.myPeerId = id; const conn = game.peer.connect(rId); game.conns[rId] = conn;
-            conn.on('open', () => {
-                document.getElementById('wait-msg').textContent = "接続成功！ホストの開始待ち...";
-                document.getElementById('wait-msg').style.color = "var(--success)";
-            });
-            conn.on('data', d => {
-                if (d.type === 'sync') { 
-                    const op = game.state.phase; const or = game.state.round;
-                    game.state = d.state; game.updateUI();
-                    if (op !== 'playing' && game.state.phase === 'playing') game.showAnnounce("GAME START");
-                    if (op === 'playing' && game.state.round > or) game.showAnnounce(`ROUND ${game.state.round}`);
-                }
-                if (d.type === 'modal_request') game.showModal(d.modalType, d.fromId);
-            });
-            document.getElementById('lobby-setup').style.display = 'none'; document.getElementById('lobby-wait').style.display = 'block';
-        });
+ 
+    const gw = this.params.gameWidth;
+    const gh = this.params.gameHeight;
+    const stageY = gh - 60;
+ 
+    const stageFloor = this.platforms.create(gw / 2, stageY, 'ground') as Phaser.Physics.Arcade.Image;
+    stageFloor.setDisplaySize(gw * 0.7, 40).refreshBody();
+ 
+    if (stage === 'battlefield') {
+      const platY1 = stageY - 95;
+      const platY2 = stageY - 175;
+      const pLeft = this.platforms.create(gw / 2 - 170, platY1, 'platform') as Phaser.Physics.Arcade.Image;
+      pLeft.setDisplaySize(140, 14).refreshBody();
+      const pRight = this.platforms.create(gw / 2 + 170, platY1, 'platform') as Phaser.Physics.Arcade.Image;
+      pRight.setDisplaySize(140, 14).refreshBody();
+      const pTop = this.platforms.create(gw / 2, platY2, 'platform') as Phaser.Physics.Arcade.Image;
+      pTop.setDisplaySize(150, 14).refreshBody();
+    } else if (stage === 'smashville') {
+      // 速度で動かすことで、乗っているキャラも一緒に運ばれる
+      this.movingPlatform = this.physics.add.image(gw / 2, stageY - 110, 'platform');
+      this.movingPlatform.setDisplaySize(160, 14);
+      this.movingPlatform.setImmovable(true);
+      const mb = this.movingPlatform.body as Body;
+      mb.setAllowGravity(false);
+      mb.setVelocityX(72);
+      for (const f of this.fighters) {
+        this.movingColliders.push(this.physics.add.collider(f.sprite, this.movingPlatform));
+      }
+    } else if (stage === 'trainingGym') {
+      const wallL = this.walls.create(40, gh / 2, 'wall') as Phaser.Physics.Arcade.Image;
+      wallL.setDisplaySize(24, gh - 40).refreshBody();
+      const wallR = this.walls.create(gw - 40, gh / 2, 'wall') as Phaser.Physics.Arcade.Image;
+      wallR.setDisplaySize(24, gh - 40).refreshBody();
+      const topPlat = this.platforms.create(gw / 2, gh / 2 - 40, 'platform') as Phaser.Physics.Arcade.Image;
+      topPlat.setDisplaySize(220, 14).refreshBody();
     }
-</script>
-</body>
-</html>
+  }
+ 
+  private getStageBounds() {
+    const gw = this.params.gameWidth;
+    return { left: gw / 2 - gw * 0.35, right: gw / 2 + gw * 0.35, top: this.params.gameHeight - 80 };
+  }
+ 
+  // -------------------------------------------------------------------
+  //  公開API（React側から呼ぶ）
+  // -------------------------------------------------------------------
+ 
+  public updateParameters(newParams: PhysicsParameters) {
+    this.params = { ...newParams };
+    this.physics.world.gravity.y = this.params.gravity;
+    if (this.player && this.player.body) {
+      this.player.setDisplaySize(this.params.width, this.params.height);
+      (this.player.body as Body).setSize(this.params.width, this.params.height);
+    }
+  }
+ 
+  public setVirtualInput(input: Partial<VirtualInput>) {
+    this.virtualInput = { ...this.virtualInput, ...input };
+  }
+ 
+  /** 'cpu': 自分で動いて攻撃してくる / 'sandbag': 動かない的 */
+  public setCpuMode(mode: 'cpu' | 'sandbag') {
+    this.cpuMode = mode;
+    this.ai.hold = { left: false, right: false, up: false, down: false };
+    this.ai.shieldUntil = 0;
+  }
+ 
+  /** 1（弱い）〜 9（強い） */
+  public setCpuLevel(level: number) {
+    this.cpuLevel = Phaser.Math.Clamp(Math.round(level), 1, 9);
+  }
+ 
+  public toggleDummy(enabled: boolean) {
+    this.dummySpawnEnabled = enabled;
+    if (!enabled && this.cpu) {
+      this.destroyFighter(this.cpu);
+      this.cpu = null;
+      this.dummy = null;
+    } else if (enabled && !this.cpu) {
+      this.createDummy();
+    }
+  }
+ 
+  public resetPositions() {
+    const gw = this.params.gameWidth;
+    this.resetFighter(this.playerF, gw / 2, 100);
+    if (this.cpu) this.resetFighter(this.cpu, gw / 2 + 120, this.params.gameHeight - 120);
+  }
+ 
+  private resetFighter(f: Fighter, x: number, y: number) {
+    f.sprite.setPosition(x, y);
+    const b = f.sprite.body as Body;
+    b.velocity.set(0, 0);
+    b.acceleration.set(0, 0);
+    f.damage = 0;
+    f.jumpsLeft = this.params.maxJumps;
+    f.attack = null;
+    f.charge = null;
+    f.hitstun = 0;
+    f.landingLag = 0;
+    f.helpless = false;
+    f.shielding = false;
+    f.shieldHP = 100;
+    f.shieldStun = 0;
+  }
+ 
+  // -------------------------------------------------------------------
+  //  メインループ
+  // -------------------------------------------------------------------
+ 
+  update(_time: number, delta: number) {
+    if (!this.playerF || !this.player || !this.player.body) return;
+    const dt = Math.min(delta, 50);
+ 
+    // 動く足場の往復
+    if (this.movingPlatform) {
+      const mb = this.movingPlatform.body as Body;
+      const gw = this.params.gameWidth;
+      if (this.movingPlatform.x >= gw / 2 + 160) mb.setVelocityX(-72);
+      else if (this.movingPlatform.x <= gw / 2 - 160) mb.setVelocityX(72);
+    }
+ 
+    const pIn = this.readPlayerInput();
+    const cIn = this.cpu ? this.computeCpuInput(dt) : emptyInput();
+ 
+    this.updateFighter(this.playerF, pIn, dt, this.cpu);
+    if (this.cpu) this.updateFighter(this.cpu, cIn, dt, this.playerF);
+    this.updateProjectiles(dt);
+ 
+    // バーストライン
+    for (const f of this.fighters) {
+      if (this.isOutOfBlastZone(f.sprite)) this.handleKO(f);
+    }
+ 
+    if (this.showTrajectory) this.renderTrajectory();
+    else this.trajectoryGraphics.clear();
+ 
+    if (this.showHitboxes) this.renderHitboxDebug();
+    else this.hitboxDebugGraphics.clear();
+ 
+    // 互換フィールド同期
+    this.jumpsLeft = this.playerF.jumpsLeft;
+    this.playerDamage = this.playerF.damage;
+    this.dummyDamage = this.cpu ? this.cpu.damage : 0;
+ 
+    this.emitTelemetry(delta);
+  }
+ 
+  private get fighters(): Fighter[] {
+    return this.cpu ? [this.playerF, this.cpu] : [this.playerF];
+  }
+ 
+  private opponentOf(f: Fighter): Fighter | null {
+    return f.key === 'player' ? this.cpu : this.playerF;
+  }
+ 
+  private readPlayerInput(): FighterInput {
+    const c = this.cursors;
+    const k = this.keys;
+    const v = this.virtualInput;
+    const JD = Phaser.Input.Keyboard.JustDown;
+ 
+    const tapUp = this.tapJump && (JD(c.up) || JD(k.up));
+    const input: FighterInput = {
+      left: c.left.isDown || k.left.isDown || v.left,
+      right: c.right.isDown || k.right.isDown || v.right,
+      up: c.up.isDown || k.up.isDown || v.up,
+      down: c.down.isDown || k.down.isDown || v.down,
+      shield: k.shieldK.isDown || k.shieldShift.isDown || v.shield,
+      jumpPressed: tapUp || JD(k.space) || (v.jump && !this.prevVirtual.jump),
+      attackPressed: JD(k.attackJ) || JD(k.attackZ) || (v.attack && !this.prevVirtual.attack),
+      specialPressed: JD(k.specialU) || JD(k.specialC) || (v.special && !this.prevVirtual.special),
+      smashPressed: JD(k.smashL) || JD(k.smashX) || (v.smash && !this.prevVirtual.smash),
+      smashHeld: k.smashL.isDown || k.smashX.isDown || v.smash,
+    };
+ 
+    this.prevVirtual = { jump: v.jump, attack: v.attack, special: v.special, smash: v.smash };
+    return input;
+  }
+ 
+  // -------------------------------------------------------------------
+  //  ファイター更新（プレイヤー・CPU共通）
+  // -------------------------------------------------------------------
+ 
+  private updateFighter(f: Fighter, input: FighterInput, dt: number, opp: Fighter | null) {
+    const s = f.sprite;
+    const body = s.body as Body;
+    const P = this.params;
+    const onGround = body.blocked.down || body.touching.down;
+ 
+    f.hitstun = Math.max(0, f.hitstun - dt);
+    f.landingLag = Math.max(0, f.landingLag - dt);
+    f.invuln = Math.max(0, f.invuln - dt);
+    f.shieldStun = Math.max(0, f.shieldStun - dt);
+ 
+    // --- 着地 ---
+    if (onGround && !f.wasOnGround) {
+      f.helpless = false;
+      f.sideBUsed = false;
+      if (f.attack && (f.attack.move.aerial || LANDING_CANCEL.includes(f.attack.id))) {
+        if (f.attack.id === 'downB') {
+          this.cameras.main.shake(90, 0.006);
+          this.dustEmitter.emitParticleAt(s.x, body.bottom, 14);
+        }
+        f.landingLag = f.attack.move.landingLag ?? 80;
+        f.attack = null;
+      }
+      if (f.key === 'player') soundManager.playLand();
+      this.spawnDust(s.x, body.bottom);
+    }
+    if (onGround) f.jumpsLeft = P.maxJumps;
+ 
+    // --- シールド ---
+    const free = f.hitstun <= 0 && f.shieldStun <= 0 && !f.attack && !f.charge && f.landingLag <= 0;
+    const wantShield = input.shield && onGround && free;
+    if (wantShield && !f.shielding && f.key === 'player') soundManager.playShield();
+    f.shielding = wantShield;
+    if (f.shielding) {
+      f.shieldHP -= (14 * dt) / 1000;
+      if (f.shieldHP <= 0) this.breakShield(f);
+    } else {
+      f.shieldHP = Math.min(100, f.shieldHP + (10 * dt) / 1000);
+    }
+ 
+    // --- 左右移動 ---
+    const dirH = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    const topSpeed = P.runSpeed * 1.5;
+    const canMove =
+      f.hitstun <= 0 &&
+      f.shieldStun <= 0 &&
+      !f.shielding &&
+      !f.charge &&
+      f.landingLag <= 0 &&
+      !(f.attack && (onGround || f.attack.id === 'sideB'));
+ 
+    if (canMove && dirH !== 0) {
+      if (body.velocity.x * dirH < topSpeed) {
+        body.setAccelerationX(dirH * (onGround ? P.accel : P.airAccel));
+        body.setDragX(0);
+      } else {
+        body.setAccelerationX(0);
+        body.setDragX(onGround ? P.groundDrag : P.airDrag);
+      }
+      if (onGround) f.facing = dirH as Dir; // 空中では振り向かない（空後のため）
+    } else {
+      body.setAccelerationX(0);
+      if (f.hitstun > 0) body.setDragX(onGround ? P.groundDrag * 0.6 : P.airDrag * 0.3);
+      else if (onGround && !canMove) body.setDragX(P.groundDrag * 1.5);
+      else body.setDragX(onGround ? P.groundDrag : P.airDrag);
+    }
+ 
+    // --- 急降下 ---
+    if (canMove && !onGround && input.down && body.velocity.y > 50) {
+      body.setVelocityY(Math.min(body.velocity.y * P.fastFallMultiplier, 900));
+    }
+    if (f.hitstun <= 0 && body.velocity.y > 1200) body.setVelocityY(1200);
+ 
+    // --- ジャンプ ---
+    const canJump =
+      f.hitstun <= 0 && f.shieldStun <= 0 && !f.helpless && !f.charge && !f.attack && f.landingLag <= 0;
+    if (input.jumpPressed && canJump && f.jumpsLeft > 0) {
+      const isFirst = onGround;
+      body.setVelocityY(-(isFirst ? P.jumpVelocity : P.doubleJumpVelocity));
+      f.jumpsLeft--;
+      f.shielding = false; // シールドからのジャンプ
+      if (isFirst) {
+        if (f.key === 'player') soundManager.playJump();
+        this.spawnDust(s.x, body.bottom);
+      } else {
+        if (f.key === 'player') soundManager.playDoubleJump();
+        this.blastEffectEmitter.emitParticleAt(s.x, s.y + s.displayHeight / 3, 5);
+      }
+    }
+ 
+    // --- 攻撃入力 ---
+    const canAct =
+      f.hitstun <= 0 &&
+      f.shieldStun <= 0 &&
+      !f.attack &&
+      !f.charge &&
+      f.landingLag <= 0 &&
+      !f.shielding &&
+      !f.helpless;
+ 
+    if (canAct) {
+      if (input.specialPressed) {
+        this.doSpecial(f, input, dirH, onGround);
+      } else if (input.smashPressed) {
+        if (onGround) {
+          if (dirH !== 0) f.facing = dirH as Dir;
+          f.charge = { id: input.up ? 'usmash' : input.down ? 'dsmash' : 'fsmash', elapsed: 0 };
+        } else {
+          this.startAttack(f, this.chooseAerial(f, input, dirH), onGround);
+        }
+      } else if (input.attackPressed) {
+        const id = onGround ? this.chooseGround(f, input, dirH) : this.chooseAerial(f, input, dirH);
+        this.startAttack(f, id, onGround);
+      }
+    }
+ 
+    // --- スマッシュため ---
+    if (f.charge) {
+      f.charge.elapsed += dt;
+      if (!input.smashHeld || f.charge.elapsed >= SMASH_MAX_CHARGE) {
+        const power = 1 + (0.5 * Math.min(f.charge.elapsed, SMASH_MAX_CHARGE)) / SMASH_MAX_CHARGE;
+        const id = f.charge.id;
+        f.charge = null;
+        this.startAttack(f, id, onGround, power);
+      }
+    }
+ 
+    // --- 攻撃進行 ---
+    if (f.attack) this.updateAttack(f, opp, dt, onGround);
+ 
+    // --- 見た目 ---
+    s.setFlipX(f.facing === -1);
+    s.setBounce(f.hitstun > 0 ? 0.4 : 0, 0); // ふっとび中だけ壁・床でバウンド
+    if (f.shieldStun > 0) s.setTint(Math.floor(f.shieldStun / 100) % 2 ? 0xffff66 : 0xff6666);
+    else if (f.hitstun > 0) s.setTint(0xff9999);
+    else if (f.charge) s.setTint(Math.floor(f.charge.elapsed / 60) % 2 ? 0xffffaa : 0xffffff);
+    else if (f.helpless) s.setTint(0x777777);
+    else s.clearTint();
+    s.setAlpha(f.invuln > 0 && Math.floor(f.invuln / 80) % 2 === 0 ? 0.35 : 1);
+ 
+    f.shieldBubble.setVisible(f.shielding);
+    if (f.shielding) {
+      const base = Math.max(s.displayWidth, s.displayHeight) / 2 + 8;
+      f.shieldBubble.setPosition(s.x, s.y);
+      f.shieldBubble.setRadius(base * (0.45 + (0.55 * f.shieldHP) / 100));
+    }
+ 
+    f.percentText.setPosition(s.x, body.top - 16);
+    f.percentText.setText(`${Math.floor(f.damage)}%`);
+    f.percentText.setColor(
+      f.damage < 50 ? '#ffffff' : f.damage < 100 ? '#ffd166' : f.damage < 150 ? '#ff9f43' : '#ff4757'
+    );
+ 
+    f.wasOnGround = onGround;
+  }
+ 
+  private chooseGround(f: Fighter, input: FighterInput, dirH: number): MoveId {
+    if (input.up) return 'utilt';
+    if (input.down) return 'dtilt';
+    if (dirH !== 0) {
+      f.facing = dirH as Dir;
+      return 'ftilt';
+    }
+    return 'jab';
+  }
+ 
+  private chooseAerial(f: Fighter, input: FighterInput, dirH: number): MoveId {
+    if (input.up) return 'uair';
+    if (input.down) return 'dair';
+    if (dirH === 0) return 'nair';
+    return dirH === f.facing ? 'fair' : 'bair';
+  }
+ 
+  private doSpecial(f: Fighter, input: FighterInput, dirH: number, onGround: boolean) {
+    if (input.up) {
+      this.startAttack(f, 'upB', onGround);
+    } else if (input.down) {
+      this.startAttack(f, 'downB', onGround);
+    } else if (dirH !== 0) {
+      if (f.sideBUsed && !onGround) return; // 空中では着地まで1回
+      f.facing = dirH as Dir;
+      this.startAttack(f, 'sideB', onGround);
+    } else if (!f.projectile) {
+      this.startAttack(f, 'neutralB', onGround);
+    }
+  }
+ 
+  // -------------------------------------------------------------------
+  //  攻撃処理
+  // -------------------------------------------------------------------
+ 
+  private startAttack(f: Fighter, id: MoveId, onGround: boolean, power: number = 1) {
+    const move = MOVES[id];
+    const body = f.sprite.body as Body;
+    f.attack = { id, move, elapsed: 0, dir: f.facing, power, hit: false, activated: false };
+ 
+    if (id === 'sideB' && !onGround) f.sideBUsed = true;
+    if (id === 'downB' && onGround) body.setVelocityY(-380); // 小ジャンプしてから叩きつけ
+    if (id === 'upB') body.setVelocityY(Math.min(body.velocity.y, 0));
+ 
+    soundManager.playSmashAttack();
+ 
+    if (this.showHitboxes) {
+      const label = power > 1.01 ? `${move.name} ×${power.toFixed(2)}` : move.name;
+      this.showFloatingText(f.sprite.x, f.sprite.y - 50, label, '#2c3e50', 14);
+    }
+  }
+ 
+  private updateAttack(f: Fighter, opp: Fighter | null, dt: number, onGround: boolean) {
+    const a = f.attack!;
+    const m = a.move;
+    const body = f.sprite.body as Body;
+    a.elapsed += dt;
+    const activeEnd = m.startup + m.active;
+ 
+    // 判定発生の瞬間
+    if (!a.activated && a.elapsed >= m.startup) {
+      a.activated = true;
+      switch (a.id) {
+        case 'upB':
+          body.setVelocity(a.dir * 80, -this.params.jumpVelocity * 1.2);
+          this.blastEffectEmitter.emitParticleAt(f.sprite.x, body.bottom, 6);
+          break;
+        case 'downB':
+          body.setVelocity(0, 950);
+          break;
+        case 'neutralB':
+          this.spawnProjectile(f, a.dir);
+          break;
+        case 'fsmash':
+          if (onGround) body.setVelocityX(a.dir * 180); // 踏み込み
+          break;
+      }
+    }
+ 
+    // 判定持続中
+    if (a.activated && a.elapsed < activeEnd) {
+      if (a.id === 'sideB') body.setVelocity(a.dir * 520, 0);
+      if (a.id === 'downB') body.setVelocityY(Math.max(body.velocity.y, 950));
+ 
+      if (!m.projectile && !a.hit && opp && opp.sprite.body) {
+        const rect = this.getHitboxRect(f, m, a.dir);
+        if (Phaser.Geom.Intersects.RectangleToRectangle(rect, this.getHurtbox(opp))) {
+          if (this.applyHit(f, opp, m, a.dir, a.power)) a.hit = true;
+        }
+      }
+    }
+ 
+    // 終了
+    if (a.elapsed >= activeEnd + m.endlag) {
+      f.attack = null;
+      if (m.helplessAfter && !onGround) f.helpless = true;
+    }
+  }
+ 
+  private getHitboxRect(f: Fighter, m: MoveData, dir: Dir): Phaser.Geom.Rectangle {
+    const s = f.sprite;
+    // キャラサイズが変わっても判定がめり込まないよう補正
+    const sx = s.displayWidth / 2 - 20;
+    const sy = s.displayHeight / 2 - 28;
+    const cx = s.x + (m.offsetX + Math.sign(m.offsetX) * sx) * dir;
+    const cy = s.y + m.offsetY + Math.sign(m.offsetY) * sy;
+    return new Phaser.Geom.Rectangle(cx - m.w / 2, cy - m.h / 2, m.w, m.h);
+  }
+ 
+  private getHurtbox(f: Fighter): Phaser.Geom.Rectangle {
+    const b = f.sprite.body as Body;
+    return new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height);
+  }
+ 
+  /** ヒット処理。シールドで防がれた場合もtrue（＝そのワザは当たり済み）を返す */
+  private applyHit(att: Fighter, tgt: Fighter, m: MoveData, dir: Dir, power: number): boolean {
+    if (tgt.invuln > 0) return false;
+    const P = this.params;
+    const tBody = tgt.sprite.body as Body;
+    const dmg = Math.max(1, Math.round(P.attackDamage * m.dmg * power));
+ 
+    // ガード
+    if (tgt.shielding) {
+      tgt.shieldHP -= dmg * 2.2;
+      tBody.setVelocityX(dir * 160);
+      soundManager.playShield();
+      this.showFloatingText(tgt.sprite.x, tgt.sprite.y - 30, 'GUARD', '#3498db');
+      if (tgt.shieldHP <= 0) this.breakShield(tgt);
+      return true;
+    }
+ 
+    tgt.damage = Math.min(999, tgt.damage + dmg);
+ 
+    // スマブラ式：基礎ふっとばし ＋ 成長率 × 蓄積% ÷ 重さ
+    const kb = P.baseKnockback * m.bkb + (P.knockbackGrowth * m.kbg * tgt.damage * 100) / P.weight;
+    const hDir = m.away ? ((Math.sign(tgt.sprite.x - att.sprite.x) || dir) as Dir) : dir;
+    const rad = m.angle * DEG;
+    const kbX = Math.cos(rad) * kb * hDir;
+    let kbY = -Math.sin(rad) * kb;
+    const tOnGround = tBody.blocked.down || tBody.touching.down;
+    if (kbY > 0 && tOnGround) kbY = -kbY * 0.6; // 地上の相手へのメテオは打ち上げに
+ 
+    tBody.setVelocity(kbX, kbY);
+    tgt.hitstun = Phaser.Math.Clamp(kb * 0.3, 120, 1000);
+    tgt.attack = null;
+    tgt.charge = null;
+    tgt.shielding = false;
+    tgt.helpless = false;
+    tgt.landingLag = 0;
+    tgt.jumpsLeft = Math.max(tgt.jumpsLeft, 1); // 被弾で空中ジャンプが1回戻る
+ 
+    soundManager.playHit();
+    this.blastEffectEmitter.emitParticleAt(tgt.sprite.x, tgt.sprite.y, kb > 900 ? 16 : 8);
+    this.showFloatingText(tgt.sprite.x, tgt.sprite.y - 20, `+${dmg}%`);
+    if (kb > 900) {
+      this.cameras.main.shake(180, 0.012);
+      this.showFloatingText(tgt.sprite.x, tgt.sprite.y - 50, 'SMASH!', '#ffa502', 24);
+    } else {
+      this.cameras.main.shake(80, 0.005);
+    }
+    return true;
+  }
+ 
+  private breakShield(f: Fighter) {
+    f.shielding = false;
+    f.shieldHP = 30;
+    f.shieldStun = 1800;
+    (f.sprite.body as Body).setVelocityY(-420);
+    soundManager.playHit();
+    this.cameras.main.shake(150, 0.01);
+    this.showFloatingText(f.sprite.x, f.sprite.y - 40, 'SHIELD BREAK!', '#f1c40f', 22);
+  }
+ 
+  private spawnProjectile(f: Fighter, dir: Dir) {
+    const s = f.sprite;
+    const img = this.physics.add.image(s.x + dir * (s.displayWidth / 2 + 10), s.y - 4, 'energy');
+    const b = img.body as Body;
+    b.setAllowGravity(false);
+    b.setVelocityX(dir * 520);
+    img.setTint(f.color);
+    f.projectile = { sprite: img, dir, life: 1100 };
+  }
+ 
+  private updateProjectiles(dt: number) {
+    for (const f of this.fighters) {
+      const pr = f.projectile;
+      if (!pr) continue;
+      pr.life -= dt;
+      pr.sprite.rotation += 0.3;
+ 
+      let done = pr.life <= 0 || pr.sprite.x < -50 || pr.sprite.x > this.params.gameWidth + 50;
+      const opp = this.opponentOf(f);
+      if (!done && opp) {
+        if (Phaser.Geom.Intersects.RectangleToRectangle(pr.sprite.getBounds(), this.getHurtbox(opp))) {
+          done = this.applyHit(f, opp, MOVES.neutralB, pr.dir, 1);
+        }
+      }
+      if (done) {
+        pr.sprite.destroy();
+        f.projectile = null;
+      }
+    }
+  }
+ 
+  // -------------------------------------------------------------------
+  //  CPU AI
+  // -------------------------------------------------------------------
+ 
+  private cpuReactionMs(): number {
+    return Math.max(60, 480 - this.cpuLevel * 45) + Math.random() * 80;
+  }
+ 
+  private computeCpuInput(dt: number): FighterInput {
+    const input = emptyInput();
+    const f = this.cpu;
+    if (!f || this.cpuMode === 'sandbag') return input;
+ 
+    const s = f.sprite;
+    const body = s.body as Body;
+    const onGround = body.blocked.down || body.touching.down;
+    const ai = this.ai;
+    ai.jumpCooldown -= dt;
+ 
+    // スマッシュをため中
+    if (f.charge) {
+      input.smashHeld = ai.smashHoldMs > 0;
+      ai.smashHoldMs -= dt;
+      return input;
+    }
+ 
+    // 復帰（場外・ステージより下にいるとき最優先）
+    const st = this.getStageBounds();
+    if (!onGround && f.hitstun <= 0 && (s.x < st.left || s.x > st.right || s.y > st.top)) {
+      const toCenter: Dir = s.x < this.params.gameWidth / 2 ? 1 : -1;
+      input.left = toCenter < 0;
+      input.right = toCenter > 0;
+      if (body.velocity.y > -60) {
+        if (f.jumpsLeft > 0 && ai.jumpCooldown <= 0 && s.y > st.top - 140) {
+          input.jumpPressed = true;
+          ai.jumpCooldown = 380;
+        } else if (f.jumpsLeft === 0 && !f.helpless && !f.attack && s.y > st.top - 60) {
+          input.up = true;
+          input.specialPressed = true; // 上B
+        }
+      }
+      return input;
+    }
+ 
+    // 一定間隔で判断（レベルが高いほど速い）
+    ai.timer -= dt;
+    if (ai.timer <= 0) {
+      ai.timer = this.cpuReactionMs();
+      this.decideCpuAction(f, this.playerF, input, onGround);
+    }
+ 
+    input.left = ai.hold.left;
+    input.right = ai.hold.right;
+    input.up = ai.hold.up;
+    input.down = ai.hold.down;
+    input.shield = this.time.now < ai.shieldUntil;
+    if (input.smashPressed) input.smashHeld = true;
+ 
+    // 地上では自分から崖の外へ歩かない
+    if (onGround) {
+      if (input.left && s.x < st.left + 30) input.left = false;
+      if (input.right && s.x > st.right - 30) input.right = false;
+    }
+    return input;
+  }
+ 
+  private decideCpuAction(f: Fighter, opp: Fighter, input: FighterInput, onGround: boolean) {
+    const ai = this.ai;
+    const lv = this.cpuLevel;
+    ai.hold = { left: false, right: false, up: false, down: false };
+    if (f.hitstun > 0 || f.shieldStun > 0) return;
+ 
+    const s = f.sprite;
+    const o = opp.sprite;
+    const dx = o.x - s.x;
+    const dy = o.y - s.y;
+    const adx = Math.abs(dx);
+    const toward: Dir = dx >= 0 ? 1 : -1;
+    const faceOK = f.facing === toward;
+    const hold = (d: number) => {
+      ai.hold.left = d < 0;
+      ai.hold.right = d > 0;
+    };
+ 
+    // 低レベルほどぼーっとする
+    if (Math.random() < (10 - lv) * 0.035) return;
+ 
+    // 防御：相手の攻撃・飛び道具が迫っていればシールド
+    const oa = opp.attack;
+    const pr = opp.projectile;
+    const threat =
+      (oa && oa.elapsed < oa.move.startup + oa.move.active && adx < 110 && Math.abs(dy) < 80) ||
+      (pr &&
+        Math.abs(pr.sprite.x - s.x) < 130 &&
+        Math.abs(pr.sprite.y - s.y) < 50 &&
+        Math.sign(s.x - pr.sprite.x) === pr.dir);
+    if (threat && onGround && Math.random() < lv * 0.08) {
+      ai.shieldUntil = this.time.now + 220 + Math.random() * 180;
+      return;
+    }
+ 
+    // 間合いの中：攻撃
+    if (adx < 85 && Math.abs(dy) < 60) {
+      // 相手の%が高いほどスマッシュを狙う
+      const pSmash = Phaser.Math.Clamp(opp.damage / 160, 0.08, 0.55);
+      const r = Math.random();
+      if (onGround) {
+        if (dy < -30) {
+          ai.hold.up = true;
+          if (r < pSmash) {
+            input.smashPressed = true;
+            ai.smashHoldMs = Math.random() * 500;
+          } else {
+            input.attackPressed = true;
+          }
+        } else if (r < pSmash) {
+          if (Math.random() < 0.3) ai.hold.down = true;
+          else hold(toward);
+          input.smashPressed = true;
+          ai.smashHoldMs = Math.random() * 600;
+        } else if (!faceOK) {
+          hold(toward);
+          input.attackPressed = true;
+        } else {
+          const r2 = Math.random();
+          if (r2 < 0.35) {
+            // 弱
+          } else if (r2 < 0.6) {
+            ai.hold.down = true;
+          } else {
+            hold(toward);
+          }
+          input.attackPressed = true;
+        }
+      } else {
+        if (dy < -25) ai.hold.up = true;
+        else if (dy > 25) ai.hold.down = true;
+        else if (!(faceOK && Math.random() < 0.5)) hold(toward); // 空前 or 空後（なければ空N）
+        input.attackPressed = true;
+      }
+      return;
+    }
+ 
+    // 上にいる相手を追う
+    if (dy < -90 && adx < 160) {
+      if (onGround && Math.random() < 0.6) {
+        input.jumpPressed = true;
+        hold(toward);
+        return;
+      }
+      if (!onGround && f.jumpsLeft > 0 && Math.random() < 0.35) {
+        input.jumpPressed = true;
+        hold(toward);
+        return;
+      }
+    }
+ 
+    // 遠距離：飛び道具
+    if (adx > 240 && Math.abs(dy) < 70 && !f.projectile && Math.random() < 0.1 + lv * 0.03) {
+      if (faceOK) input.specialPressed = true;
+      else hold(toward); // まず振り向く
+      return;
+    }
+ 
+    // 中距離：突進（ステージ外に飛び出さない時だけ）
+    const st = this.getStageBounds();
+    const dashEnd = s.x + toward * 230;
+    if (
+      onGround &&
+      faceOK &&
+      adx > 170 &&
+      adx < 320 &&
+      dashEnd > st.left &&
+      dashEnd < st.right &&
+      Math.random() < 0.05 + lv * 0.01
+    ) {
+      hold(toward);
+      input.specialPressed = true;
+      return;
+    }
+ 
+    // 接近
+    hold(toward);
+    if (!onGround && dy > 60) ai.hold.down = true;
+  }
+ 
+  // -------------------------------------------------------------------
+  //  撃墜
+  // -------------------------------------------------------------------
+ 
+  private isOutOfBlastZone(s: Phaser.Physics.Arcade.Sprite): boolean {
+    const m = 180;
+    return (
+      s.y > this.params.gameHeight + m ||
+      s.y < -m ||
+      s.x < -m ||
+      s.x > this.params.gameWidth + m
+    );
+  }
+ 
+  private handleKO(f: Fighter) {
+    soundManager.playKO();
+    this.cameras.main.shake(300, 0.02);
+ 
+    const gw = this.params.gameWidth;
+    const gh = this.params.gameHeight;
+    this.blastEffectEmitter.emitParticleAt(
+      Phaser.Math.Clamp(f.sprite.x, 20, gw - 20),
+      Phaser.Math.Clamp(f.sprite.y, 20, gh - 20),
+      30
+    );
+ 
+    const isPlayer = f.key === 'player';
+    if (isPlayer) this.playerKOs++;
+    else this.dummyKOs++;
+ 
+    this.resetFighter(f, isPlayer ? gw / 2 : gw / 2 + 100, isPlayer ? 80 : 100);
+    f.invuln = RESPAWN_INVULN;
+    soundManager.playRespawn();
+ 
+    const label = isPlayer ? 'PLAYER KO!' : this.cpuMode === 'cpu' ? 'CPU KO!' : 'DUMMY KO!';
+    this.showKOAnnouncement(label);
+  }
+ 
+  // -------------------------------------------------------------------
+  //  演出・デバッグ表示
+  // -------------------------------------------------------------------
+ 
+  private spawnDust(x: number, y: number) {
+    this.dustEmitter.emitParticleAt(x, y, 6);
+  }
+ 
+  private showFloatingText(x: number, y: number, text: string, color: string = '#ff4757', size: number = 18) {
+    const pop = this.add
+      .text(x, y, text, {
+        fontSize: `${size}px`,
+        fontStyle: 'bold',
+        color,
+        stroke: '#ffffff',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(15);
+ 
+    this.tweens.add({
+      targets: pop,
+      y: y - 35,
+      alpha: 0,
+      scale: 1.3,
+      duration: 600,
+      ease: 'Power1',
+      onComplete: () => pop.destroy(),
+    });
+  }
+ 
+  private showKOAnnouncement(msg: string) {
+    const banner = this.add
+      .text(this.params.gameWidth / 2, this.params.gameHeight / 2 - 40, msg, {
+        fontSize: '44px',
+        fontStyle: '900',
+        color: '#ff4757',
+        stroke: '#ffffff',
+        strokeThickness: 6,
+      })
+      .setOrigin(0.5)
+      .setScale(0.2)
+      .setDepth(30);
+ 
+    this.tweens.add({
+      targets: banner,
+      scale: 1.1,
+      duration: 250,
+      ease: 'Back.easeOut',
+      yoyo: true,
+      hold: 400,
+      onComplete: () => banner.destroy(),
+    });
+  }
+ 
+  private emitTelemetry(delta: number) {
+    this.telemetryTimer += delta;
+    if (this.telemetryTimer < 33 || !this.onTelemetryUpdate) return;
+    this.telemetryTimer = 0;
+ 
+    const f = this.playerF;
+    const body = f.sprite.body as Body;
+    const onGround = body.blocked.down || body.touching.down;
+ 
+    let state: GameTelemetry['state'] = 'idle';
+    if (f.shielding) state = 'shielding';
+    else if (f.attack || f.charge) state = 'attacking';
+    else if (!onGround && body.velocity.y < 0) state = 'jumping';
+    else if (!onGround) state = 'falling';
+    else if (Math.abs(body.velocity.x) > 20) state = 'running';
+ 
+    this.onTelemetryUpdate({
+      vx: body.velocity.x,
+      vy: body.velocity.y,
+      onGround,
+      jumpsLeft: f.jumpsLeft,
+      x: f.sprite.x,
+      y: f.sprite.y,
+      state,
+      playerDamage: this.playerDamage,
+      dummyDamage: this.dummyDamage,
+      dummyKOs: this.dummyKOs,
+      playerKOs: this.playerKOs,
+      fps: Math.round(this.game.loop.actualFps),
+    });
+  }
+ 
+  private renderTrajectory() {
+    this.trajectoryGraphics.clear();
+    if (!this.player || !this.player.body) return;
+ 
+    this.trajectoryGraphics.lineStyle(2, 0xffffff, 0.4);
+    let simX = this.player.x;
+    let simY = this.player.y;
+    const simVx = this.player.body.velocity.x;
+    let simVy = this.player.body.velocity.y;
+    const gravity = this.params.gravity;
+    const dt = 1 / 45;
+ 
+    this.trajectoryGraphics.beginPath();
+    this.trajectoryGraphics.moveTo(simX, simY);
+    for (let step = 0; step < 24; step++) {
+      simX += simVx * dt;
+      simVy += gravity * dt;
+      simY += simVy * dt;
+      this.trajectoryGraphics.lineTo(simX, simY);
+      if (simY > this.params.gameHeight - 60) break;
+    }
+    this.trajectoryGraphics.strokePath();
+  }
+ 
+  private renderHitboxDebug() {
+    const g = this.hitboxDebugGraphics;
+    g.clear();
+ 
+    for (const f of this.fighters) {
+      // 喰らい判定（プレイヤー緑 / CPU青）
+      g.lineStyle(2, f.key === 'player' ? 0x2ecc71 : 0x3498db, 0.9);
+      g.strokeRectShape(this.getHurtbox(f));
+ 
+      // 攻撃判定（発生前は黄色の予告、持続中は赤）
+      const a = f.attack;
+      if (a && !a.move.projectile) {
+        const rect = this.getHitboxRect(f, a.move, a.dir);
+        if (!a.activated) {
+          g.lineStyle(1, 0xf1c40f, 0.6);
+          g.strokeRectShape(rect);
+        } else if (a.elapsed < a.move.startup + a.move.active) {
+          g.lineStyle(2, 0xe74c3c, 1);
+          g.strokeRectShape(rect);
+        }
+      }
+ 
+      if (f.projectile) {
+        g.lineStyle(2, 0xe74c3c, 1);
+        g.strokeRectShape(f.projectile.sprite.getBounds());
+      }
+    }
+  }
+}
+ 
